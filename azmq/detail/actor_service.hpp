@@ -216,7 +216,7 @@ namespace detail {
                     ec = make_error_code(boost::asio::error::no_protocol_option);
                     break;
                 default:
-                    ec = make_error_code(boost::asio::error::not_supported);
+                    ec = make_error_code(boost::asio::error::operation_not_supported);
                     break;
                 }
                 return ec;
@@ -248,7 +248,7 @@ namespace detail {
                     }
                     break;
                 default:
-                        ec = make_error_code(boost::asio::error::not_supported);
+                        ec = make_error_code(boost::asio::error::operation_not_supported);
                     break;
                 }
                 return ec;
