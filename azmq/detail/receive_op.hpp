@@ -45,7 +45,7 @@ public:
 
 protected:
     bool more() const {
-        return ec_ == boost::system::errc::no_buffer_space && bytes_transferred_;
+        return ec_ == boost::asio::error::no_buffer_space && bytes_transferred_;
     }
 
 private:

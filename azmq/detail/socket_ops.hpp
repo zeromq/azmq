@@ -19,6 +19,7 @@
 #include <boost/regex.hpp>
 #include <boost/utility/string_ref.hpp>
 #include <boost/asio/io_service.hpp>
+#include <boost/asio/error.hpp>
 #include <boost/asio/socket_base.hpp>
 #if ! defined BOOST_ASIO_WINDOWS
     #include <boost/asio/posix/stream_descriptor.hpp>
@@ -304,7 +305,7 @@ namespace detail {
                     return 0;
 
                 if (msg.buffer_copy(*it++) < sz) {
-                    ec = make_error_code(boost::system::errc::no_buffer_space);
+                    ec = make_error_code(boost::asio::error::no_buffer_space);
                     return 0;
                 }
 
@@ -313,7 +314,7 @@ namespace detail {
             } while ((it != std::end(buffers)) && msg.more());
 
             if (msg.more())
-                ec = make_error_code(boost::system::errc::no_buffer_space);
+                ec = make_error_code(boost::asio::error::no_buffer_space);
             return res;
         }
 
