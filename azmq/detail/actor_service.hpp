@@ -21,6 +21,7 @@
 
 #include <boost/assert.hpp>
 #include <boost/asio/signal_set.hpp>
+#include <boost/asio/error.hpp>
 #include <boost/container/flat_map.hpp>
 
 #include <string>
@@ -195,7 +196,7 @@ namespace detail {
                                                  boost::system::error_code & ec) {
                 switch (opt.name()) {
                 case is_alive::static_name::value :
-                    ec = make_error_code(boost::system::errc::no_protocol_option);
+                    ec = make_error_code(boost::asio::error::no_protocol_option);
                     break;
                 case detached::static_name::value :
                     {
@@ -212,10 +213,10 @@ namespace detail {
                     }
                     break;
                 case last_error::static_name::value :
-                    ec = make_error_code(boost::system::errc::no_protocol_option);
+                    ec = make_error_code(boost::asio::error::no_protocol_option);
                     break;
                 default:
-                    ec = make_error_code(boost::system::errc::not_supported);
+                    ec = make_error_code(boost::asio::error::operation_not_supported);
                     break;
                 }
                 return ec;
@@ -238,7 +239,7 @@ namespace detail {
                     }
                     break;
                 case start::static_name::value :
-                    ec = make_error_code(boost::system::errc::no_protocol_option);
+                    ec = make_error_code(boost::asio::error::no_protocol_option);
                     break;
                 case last_error::static_name::value :
                     {
@@ -247,7 +248,7 @@ namespace detail {
                     }
                     break;
                 default:
-                    ec = make_error_code(boost::system::errc::not_supported);
+                        ec = make_error_code(boost::asio::error::operation_not_supported);
                     break;
                 }
                 return ec;

@@ -27,10 +27,10 @@
 #include <boost/assert.hpp>
 #include <boost/optional.hpp>
 #include <boost/intrusive/list.hpp>
-#include <boost/system/system_error.hpp>
 #include <boost/container/flat_map.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/lock_guard.hpp>
+#include <boost/asio/error.hpp>
 
 #include <memory>
 #include <typeindex>
@@ -120,7 +120,7 @@ namespace detail {
             void cancel_ops(boost::system::error_code const& ec, op_queue_type & ops) {
                 for (auto i = 0; i < max_ops; ++i) {
                     while (!op_queue_[i].empty()) {
-                        op_queue_[i].front().ec_ = make_error_code(boost::system::errc::operation_canceled);
+                        op_queue_[i].front().ec_ = make_error_code(boost::asio::error::operation_aborted);
                         op_queue_[i].pop_front_and_dispose([&ops](reactor_op * op) {
                             ops.push_back(*op);
                         });
@@ -275,7 +275,7 @@ namespace detail {
             default:
                 for (auto& ext : impl->exts_) {
                     if (ext.second.set_option(option, ec)) {
-                        if (ec.value() == boost::system::errc::not_supported) continue;
+                        if (ec.value() == boost::asio::error::operation_not_supported) continue;
                         return ec;
                     }
                 }
@@ -293,7 +293,7 @@ namespace detail {
             switch (option.name()) {
             case allow_speculative::static_name::value :
                     if (option.size() < sizeof(bool)) {
-                        ec = make_error_code(boost::system::errc::invalid_argument);
+                        ec = make_error_code(boost::asio::error::invalid_argument);
                     } else {
                         ec = boost::system::error_code();
                         *static_cast<bool*>(option.data()) = impl->allow_speculative_;
@@ -302,7 +302,7 @@ namespace detail {
             default:
                 for (auto& ext : impl->exts_) {
                     if (ext.second.get_option(option, ec)) {
-                        if (ec.value() == boost::system::errc::not_supported) continue;
+                        if (ec.value() == boost::asio::error::operation_not_supported) continue;
                         return ec;
                     }
                 }
@@ -319,7 +319,7 @@ namespace detail {
             if (impl->shutdown_ < what)
                 impl->shutdown_ = what;
             else
-                ec = make_error_code(boost::system::errc::operation_not_permitted);
+                ec = make_error_code(boost::asio::error::no_permission);
             return ec;
         }
 
@@ -463,7 +463,7 @@ namespace detail {
 
         bool is_shutdown(implementation_type & impl, op_type o, boost::system::error_code & ec) {
             if (is_shutdown(o, impl->shutdown_)) {
-                ec = make_error_code(boost::system::errc::operation_not_permitted);
+                ec = make_error_code(boost::asio::error::no_permission);
                 return true;
             }
             return false;
