@@ -32,7 +32,7 @@ public:
     }
 
     static boost::system::error_code canceled() {
-        static boost::system::error_code ec = make_error_code(boost::system::errc::operation_canceled);
+        static boost::system::error_code ec{boost::asio::error::operation_aborted};
         return ec;
     }
 
@@ -47,7 +47,7 @@ protected:
         return ec_.value() == boost::system::errc::resource_unavailable_try_again;
     }
 
-    bool is_canceled() const { return ec_.value() == boost::system::errc::operation_canceled; }
+    bool is_canceled() const { return ec_.value() == boost::asio::error::operation_aborted; }
 
     reactor_op(perform_func_type perform_func,
                complete_func_type complete_func)
