@@ -89,6 +89,11 @@ namespace detail {
             return socket_type(res);
         }
 
+        static socket_type attach_socket(raw_socket_type s) {
+            BOOST_ASSERT_MSG(s, "Invalid socket");
+            return socket_type(s);
+        }
+
         static stream_descriptor get_stream_descriptor(boost::asio::io_service & io_service,
                                                        socket_type & socket,
                                                        boost::system::error_code & ec) {

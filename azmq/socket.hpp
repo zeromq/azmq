@@ -32,6 +32,16 @@ AZMQ_V1_INLINE_NAMESPACE_BEGIN
  */
 class socket :
     public azmq::detail::basic_io_object<detail::socket_service> {
+    friend socket socket_from_zmq_sock(boost::asio::io_service&, void*, bool);
+
+    socket(boost::asio::io_service& ios,
+           detail::socket_ops::raw_socket_type s,
+           bool optimize_single_threaded)
+        : azmq::detail::basic_io_object<detail::socket_service>(ios) {
+        boost::system::error_code ec;
+        if (get_service().do_attach_socket(implementation, s, optimize_single_threaded, ec))
+            throw boost::system::system_error(ec);
+    }
 
 public:
     using native_handle_type = detail::socket_service::native_handle_type;
@@ -126,6 +136,19 @@ public:
 
     socket(const socket &) = delete;
     socket & operator=(const socket &) = delete;
+
+    /** Implementation of Swappable concept
+     */
+    void swap(socket & other) {
+        implementation.swap(other.implementation);
+    }
+
+    /** Release the underlying zmq socket and terminate all outstanding async
+     *  operations on this socket.
+     */
+    native_handle_type release() {
+        return get_service().release(implementation);
+    }
 
     /** \brief Accept incoming connections on this socket
      *  \param addr std::string zeromq URI to bind
@@ -681,7 +704,14 @@ public:
         s.get_service().format(s.implementation, stm);
         return stm;
     }
+
 };
+
+socket socket_from_zmq_sock(boost::asio::io_service& ios, void* s,
+                                   bool optimize_single_threaded = false) {
+    return socket(ios, s, optimize_single_threaded);
+}
+
 AZMQ_V1_INLINE_NAMESPACE_END
 
 namespace detail {

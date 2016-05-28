@@ -74,6 +74,16 @@ TEST_CASE( "Send/Receive single buffer", "[socket]") {
 
     REQUIRE(sz1 == sz2);
     REQUIRE(boost::string_ref(msg) == boost::string_ref(buf.data()));
+
+    // Verify we can detach and reattach the underlying socket
+    auto s = sb.release();
+    REQUIRE(s);
+
+    auto sb2 = azmq::socket_from_zmq_sock(ios, s);
+    sz1 = sc.send(snd_buf);
+    sz2 = sb2.receive(boost::asio::buffer(buf));
+    REQUIRE(sz1 == sz2);
+    REQUIRE(boost::string_ref(msg) == boost::string_ref(buf.data()));
 }
 
 TEST_CASE( "Send/Receive synchronous", "[socket]" ) {
