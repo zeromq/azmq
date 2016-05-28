@@ -176,6 +176,33 @@ TEST_CASE( "write_through_mutable_buffer", "[message]" ) {
     REQUIRE(s != ss);
 }
 
+TEST_CASE( "comparison", "[message]" ) {
+    using boost::asio::buffer;
+
+    REQUIRE(azmq::message(buffer("bla-bla", 7)) == azmq::message(buffer("bla-bla", 7)));
+    REQUIRE_FALSE(azmq::message(buffer("bla-bla", 7)) != azmq::message(buffer("bla-bla", 7)));
+
+    REQUIRE(azmq::message(buffer("bla-bla", 7)) != azmq::message(buffer("bla-bla", 6)));
+    REQUIRE_FALSE(azmq::message(buffer("bla-bla", 7)) == azmq::message(buffer("bla-bla", 6)));
+
+    REQUIRE(azmq::message(buffer("bla-bla", 6)) != azmq::message(buffer("bla-bla", 7)));
+    REQUIRE_FALSE(azmq::message(buffer("bla-bla", 6)) == azmq::message(buffer("bla-bla", 7)));
+
+    REQUIRE_FALSE(azmq::message(buffer("bla-bla", 7)) == azmq::message(buffer("bla-BLB", 7)));
+    REQUIRE(azmq::message(buffer("bla-bla", 7)) != azmq::message(buffer("bla-BLB", 7)));
+
+    REQUIRE_FALSE(azmq::message(buffer("bla-BLB", 7)) == azmq::message(buffer("bla-bla", 7)));
+    REQUIRE(azmq::message(buffer("bla-BLB", 7)) != azmq::message(buffer("bla-bla", 7)));
+}
+
+
+TEST_CASE( "message_data", "[message]" ) {
+    azmq::message m("bla-bla");
+
+    REQUIRE(m.size() == 7);
+    REQUIRE(0 == memcmp(m.data(), "bla-bla", 7));
+}
+
 TEST_CASE( "message_sequence", "[message]" ) {
     std::string foo("foo");
     std::string bar("bar");

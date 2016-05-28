@@ -276,12 +276,10 @@ namespace detail {
             size_t res = 0;
             auto last = std::distance(std::begin(buffers), std::end(buffers)) - 1;
             auto index = 0u;
-            message msg;
             for (auto it = std::begin(buffers); it != std::end(buffers); ++it, ++index) {
-                msg.rebuild(*it);
                 auto f = index == last ? flags
                                        : flags | ZMQ_SNDMORE;
-                res += send(msg, socket, f, ec);
+                res += send(message(*it), socket, f, ec);
                 if (ec) return 0u;
             }
             return res;
@@ -292,7 +290,6 @@ namespace detail {
                               flags_type flags,
                               boost::system::error_code & ec) {
             BOOST_ASSERT_MSG(socket, "Invalid socket");
-            msg.rebuild();
             auto rc = zmq_msg_recv(const_cast<zmq_msg_t*>(&msg.msg_), socket.get(), flags);
             if (rc < 0) {
                 ec = make_error_code();
