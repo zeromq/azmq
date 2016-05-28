@@ -34,14 +34,8 @@ class socket :
     public azmq::detail::basic_io_object<detail::socket_service> {
     friend socket socket_from_zmq_sock(boost::asio::io_service&, void*, bool);
 
-    socket(boost::asio::io_service& ios,
-           detail::socket_ops::raw_socket_type s,
-           bool optimize_single_threaded)
-        : azmq::detail::basic_io_object<detail::socket_service>(ios) {
-        boost::system::error_code ec;
-        if (get_service().do_attach_socket(implementation, s, optimize_single_threaded, ec))
-            throw boost::system::system_error(ec);
-    }
+    explicit socket(boost::asio::io_service& ios)
+        : azmq::detail::basic_io_object<detail::socket_service>(ios) {}
 
 public:
     using native_handle_type = detail::socket_service::native_handle_type;
@@ -114,14 +108,14 @@ public:
     explicit socket(boost::asio::io_service& ios,
                     int type,
                     bool optimize_single_threaded = false)
-            : azmq::detail::basic_io_object<detail::socket_service>(ios) {
+            : socket(ios) {
         boost::system::error_code ec;
         if (get_service().do_open(implementation, type, optimize_single_threaded, ec))
             throw boost::system::system_error(ec);
     }
 
     socket(socket&& other)
-        : azmq::detail::basic_io_object<detail::socket_service>(other.get_io_service()) {
+        : socket(other.get_io_service()) {
         get_service().move_construct(implementation,
                                      other.get_service(),
                                      other.implementation);
@@ -706,7 +700,6 @@ public:
         s.get_service().format(s.implementation, stm);
         return stm;
     }
-
 };
 
 /** \brief Construct a azmq socket from a previously obtained zeromq socket
@@ -717,8 +710,12 @@ public:
  *      threaded io_service
  **/
 socket socket_from_zmq_sock(boost::asio::io_service& ios, void* s,
-                                   bool optimize_single_threaded = false) {
-    return socket(ios, s, optimize_single_threaded);
+                            bool optimize_single_threaded = false) {
+    socket res(ios);
+    boost::system::error_code ec;
+    if (res.get_service().do_attach_socket(res.implementation, s, optimize_single_threaded, ec))
+       throw boost::system::system_error(ec);
+    return res;
 }
 
 AZMQ_V1_INLINE_NAMESPACE_END
