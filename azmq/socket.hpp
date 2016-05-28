@@ -143,8 +143,10 @@ public:
         implementation.swap(other.implementation);
     }
 
-    /** Release the underlying zmq socket and terminate all outstanding async
+    /** \brief Release the underlying zmq socket and terminate all outstanding async
      *  operations on this socket.
+     *  \return native libzmq socket
+     *  \remark the only supported operation on the socket after this call is destruction
      */
     native_handle_type release() {
         return get_service().release(implementation);
@@ -707,6 +709,13 @@ public:
 
 };
 
+/** \brief Construct a azmq socket from a previously obtained zeromq socket
+ *  \param ios io_service on which to construct the returned socket
+ *  \param s void* result from another call to obtain a libzmq socket
+ *  \param optimize_single_threaded bool
+ *      Defaults to false - socket is not optimized for a single
+ *      threaded io_service
+ **/
 socket socket_from_zmq_sock(boost::asio::io_service& ios, void* s,
                                    bool optimize_single_threaded = false) {
     return socket(ios, s, optimize_single_threaded);
