@@ -45,7 +45,7 @@ namespace detail {
         : public azmq::detail::service_base<socket_service> {
     public:
         using socket_type = socket_ops::socket_type;
-        using native_handle_type= socket_ops::raw_socket_type;
+        using native_handle_type = socket_ops::raw_socket_type;
         using stream_descriptor = socket_ops::stream_descriptor;
         using endpoint_type = socket_ops::endpoint_type;
         using flags_type = socket_ops::flags_type;
@@ -87,19 +87,31 @@ namespace detail {
             bool serverish_ = false;
             std::array<op_queue_type, max_ops> op_queue_;
 
+            void do_attach_socket(boost::asio::io_service & ios,
+                                  socket_type socket,
+                                  bool optimize_single_threaded,
+                                  boost::system::error_code & ec) {
+                BOOST_ASSERT_MSG(!socket_, "socket already open");
+                socket_ = std::move(socket);
+                sd_ = socket_ops::get_stream_descriptor(ios, socket_, ec);
+                if (ec) return;
+
+                optimize_single_threaded_ = optimize_single_threaded;
+            }
+
             void do_open(boost::asio::io_service & ios,
                          context_type & ctx,
                          int type,
                          bool optimize_single_threaded,
                          boost::system::error_code & ec) {
-                BOOST_ASSERT_MSG(!socket_, "socket already open");
-                socket_ = socket_ops::create_socket(ctx, type, ec);
+                auto s = socket_ops::create_socket(ctx, type, ec);
                 if (ec) return;
+                return do_attach_socket(ios, std::move(s), optimize_single_threaded, ec);
+            }
 
-                sd_ = socket_ops::get_stream_descriptor(ios, socket_, ec);
-                if (ec) return;
-
-                optimize_single_threaded_ = optimize_single_threaded;
+            native_handle_type release() {
+                BOOST_ASSERT_MSG(socket_, "invalid socket");
+                return socket_.release();
             }
 
             int events_mask() const
@@ -215,6 +227,18 @@ namespace detail {
             impl = std::move(other);
         }
 
+        boost::system::error_code do_attach_socket(implementation_type & impl,
+                                                   native_handle_type socket,
+                                                   bool optimize_single_threaded,
+                                                   boost::system::error_code & ec) {
+            BOOST_ASSERT_MSG(impl, "impl");
+            impl->do_attach_socket(get_io_service(), socket_ops::attach_socket(socket),
+                                   optimize_single_threaded, ec);
+            if (ec)
+                impl.reset();
+            return ec;
+        }
+
         boost::system::error_code do_open(implementation_type & impl,
                                           int type,
                                           bool optimize_single_threaded,
@@ -224,10 +248,6 @@ namespace detail {
             if (ec)
                 impl.reset();
             return ec;
-        }
-
-        void destroy(implementation_type & impl) {
-            impl.reset();
         }
 
         native_handle_type native_handle(implementation_type & impl) {
@@ -466,12 +486,41 @@ namespace detail {
             }
         }
 
-        boost::system::error_code cancel(implementation_type & impl,
-                                         boost::system::error_code & ec) {
-            unique_lock l{ *impl };
+        boost::system::error_code cancel_impl(implementation_type & impl,
+                                              boost::system::error_code & ec) {
             descriptors_.unregister_descriptor(impl);
             cancel_ops(impl);
             return impl->cancel_stream_descriptor(ec);
+        }
+
+        boost::system::error_code cancel(implementation_type & impl,
+                                         boost::system::error_code & ec) {
+            unique_lock l{ *impl };
+            return cancel_impl(impl, ec);
+        }
+
+
+        native_handle_type release(implementation_type & impl) {
+            boost::system::error_code ec;
+            native_handle_type res;
+            {
+                unique_lock l{ *impl };
+                cancel_impl(impl, ec);
+                res = impl->release();
+            }
+            impl.reset();
+            return res;
+        }
+
+        void destroy(implementation_type & impl) {
+            if (!impl) return;
+
+            boost::system::error_code ec;
+            {
+                unique_lock l{ *impl };
+                cancel_impl(impl, ec);
+            }
+            impl.reset();
         }
 
         std::string monitor(implementation_type & impl, int events,

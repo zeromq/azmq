@@ -32,6 +32,10 @@ AZMQ_V1_INLINE_NAMESPACE_BEGIN
  */
 class socket :
     public azmq::detail::basic_io_object<detail::socket_service> {
+    friend socket socket_from_zmq_sock(boost::asio::io_service&, void*, bool);
+
+    explicit socket(boost::asio::io_service& ios)
+        : azmq::detail::basic_io_object<detail::socket_service>(ios) {}
 
 public:
     using native_handle_type = detail::socket_service::native_handle_type;
@@ -104,14 +108,14 @@ public:
     explicit socket(boost::asio::io_service& ios,
                     int type,
                     bool optimize_single_threaded = false)
-            : azmq::detail::basic_io_object<detail::socket_service>(ios) {
+            : socket(ios) {
         boost::system::error_code ec;
         if (get_service().do_open(implementation, type, optimize_single_threaded, ec))
             throw boost::system::system_error(ec);
     }
 
     socket(socket&& other)
-        : azmq::detail::basic_io_object<detail::socket_service>(other.get_io_service()) {
+        : socket(other.get_io_service()) {
         get_service().move_construct(implementation,
                                      other.get_service(),
                                      other.implementation);
@@ -126,6 +130,21 @@ public:
 
     socket(const socket &) = delete;
     socket & operator=(const socket &) = delete;
+
+    /** Implementation of Swappable concept
+     */
+    void swap(socket & other) {
+        implementation.swap(other.implementation);
+    }
+
+    /** \brief Release the underlying zmq socket and terminate all outstanding async
+     *  operations on this socket.
+     *  \return native libzmq socket
+     *  \remark the only supported operation on the socket after this call is destruction
+     */
+    native_handle_type release() {
+        return get_service().release(implementation);
+    }
 
     /** \brief Accept incoming connections on this socket
      *  \param addr std::string zeromq URI to bind
@@ -682,6 +701,23 @@ public:
         return stm;
     }
 };
+
+/** \brief Construct a azmq socket from a previously obtained zeromq socket
+ *  \param ios io_service on which to construct the returned socket
+ *  \param s void* result from another call to obtain a libzmq socket
+ *  \param optimize_single_threaded bool
+ *      Defaults to false - socket is not optimized for a single
+ *      threaded io_service
+ **/
+socket socket_from_zmq_sock(boost::asio::io_service& ios, void* s,
+                            bool optimize_single_threaded = false) {
+    socket res(ios);
+    boost::system::error_code ec;
+    if (res.get_service().do_attach_socket(res.implementation, s, optimize_single_threaded, ec))
+       throw boost::system::system_error(ec);
+    return res;
+}
+
 AZMQ_V1_INLINE_NAMESPACE_END
 
 namespace detail {
