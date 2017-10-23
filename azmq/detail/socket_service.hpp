@@ -111,12 +111,8 @@ namespace detail {
 
             bool perform_ops(op_queue_type & ops, boost::system::error_code& ec) {
                 const int filter[max_ops] = { ZMQ_POLLIN, ZMQ_POLLOUT };
-                for (;;) {
-                    int rc = socket_ops::get_events(socket_, ec);
-                    if (rc < 0 && ec.value() == boost::system::errc::interrupted)
-                        continue;
-                    int evs = rc & events_mask();
-                    if (!evs)
+                while(int evs = socket_ops::get_events(socket_, ec)& events_mask()) {
+                    if (ec)
                         break;
 
                     for (size_t i = 0; i != max_ops; ++i) {
