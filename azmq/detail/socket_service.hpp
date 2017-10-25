@@ -110,9 +110,10 @@ namespace detail {
             }
 
             bool perform_ops(op_queue_type & ops, boost::system::error_code& ec) {
-                while (int evs = socket_ops::get_events(socket_, ec) & events_mask()) {
-                    static_assert(2 == max_ops, "2 == max_ops");
-                    const int filter[max_ops] = { ZMQ_POLLIN, ZMQ_POLLOUT };
+                const int filter[max_ops] = { ZMQ_POLLIN, ZMQ_POLLOUT };
+                while(int evs = socket_ops::get_events(socket_, ec)& events_mask()) {
+                    if (ec)
+                        break;
 
                     for (size_t i = 0; i != max_ops; ++i) {
                         if ((evs & filter[i]) && op_queue_[i].front().do_perform(socket_)) {
