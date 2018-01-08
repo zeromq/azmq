@@ -106,21 +106,21 @@ public:
                     bool optimize_single_threaded = false)
             : azmq::detail::basic_io_object<detail::socket_service>(ios) {
         boost::system::error_code ec;
-        if (get_service().do_open(implementation, type, optimize_single_threaded, ec))
+        if (get_service().do_open(get_implementation(), type, optimize_single_threaded, ec))
             throw boost::system::system_error(ec);
     }
 
     socket(socket&& other)
         : azmq::detail::basic_io_object<detail::socket_service>(other.get_io_service()) {
-        get_service().move_construct(implementation,
+        get_service().move_construct(get_implementation(),
                                      other.get_service(),
-                                     other.implementation);
+                                     other.get_implementation());
     }
 
     socket& operator=(socket&& rhs) {
-        get_service().move_assign(implementation,
+        get_service().move_assign(get_implementation(),
                                   rhs.get_service(),
-                                  rhs.implementation);
+                                  rhs.get_implementation());
         return *this;
     }
 
@@ -150,7 +150,7 @@ public:
      */
     boost::system::error_code bind(std::string addr,
                                    boost::system::error_code & ec) {
-        return get_service().bind(implementation, std::move(addr), ec);
+        return get_service().bind(get_implementation(), std::move(addr), ec);
     }
 
     /** \brief Accept incoming connections on this socket
@@ -171,7 +171,7 @@ public:
      */
     boost::system::error_code unbind(std::string const& addr,
                                      boost::system::error_code & ec) {
-        return get_service().unbind(implementation, addr, ec);
+        return get_service().unbind(get_implementation(), addr, ec);
     }
 
     /** \brief Stop accepting connection on this socket
@@ -192,7 +192,7 @@ public:
      */
     boost::system::error_code connect(std::string addr,
                                       boost::system::error_code & ec) {
-        return get_service().connect(implementation, std::move(addr), ec);
+        return get_service().connect(get_implementation(), std::move(addr), ec);
     }
 
     /** \brief Create outgoing connection from this socket
@@ -213,7 +213,7 @@ public:
      */
     boost::system::error_code disconnect(std::string const& addr,
                                          boost::system::error_code & ec) {
-        return get_service().disconnect(implementation, addr, ec);
+        return get_service().disconnect(get_implementation(), addr, ec);
     }
 
     /** \brief Disconnect this socket
@@ -234,7 +234,7 @@ public:
      *  or bind have occured, this call wil return only the most recent
      */
     endpoint_type endpoint() const {
-        return get_service().endpoint(implementation);
+        return get_service().endpoint(get_implementation());
     }
 
     /** \brief Set an option on a socket
@@ -245,7 +245,7 @@ public:
     template<typename Option>
     boost::system::error_code set_option(Option const& opt,
                                          boost::system::error_code & ec) {
-        return get_service().set_option(implementation, opt, ec);
+        return get_service().set_option(get_implementation(), opt, ec);
     }
 
     /** \brief Set an option on a socket
@@ -268,7 +268,7 @@ public:
     template<typename Option>
     boost::system::error_code get_option(Option & opt,
                                          boost::system::error_code & ec) {
-        return get_service().get_option(implementation, opt, ec);
+        return get_service().get_option(get_implementation(), opt, ec);
     }
 
     /** \brief Get an option from a socket
@@ -308,7 +308,7 @@ public:
     std::size_t receive(MutableBufferSequence const& buffers,
                         flags_type flags,
                         boost::system::error_code & ec) {
-        return get_service().receive(implementation, buffers, flags, ec);
+        return get_service().receive(get_implementation(), buffers, flags, ec);
     }
 
     /** \brief Receive some data from the socket
@@ -355,7 +355,7 @@ public:
     std::size_t receive(message & msg,
                         flags_type flags,
                         boost::system::error_code & ec) {
-        return get_service().receive(implementation, msg, flags, ec);
+        return get_service().receive(get_implementation(), msg, flags, ec);
     }
 
     /** \brief Receive some data from the socket
@@ -387,7 +387,7 @@ public:
     size_t receive_more(message_vector & vec,
                         flags_type flags,
                         boost::system::error_code & ec) {
-        return get_service().receive_more(implementation, vec, flags, ec);
+        return get_service().receive_more(get_implementation(), vec, flags, ec);
     }
 
     /** \brief Receive all parts of a multipart message from the socket
@@ -418,7 +418,7 @@ public:
     std::size_t send(ConstBufferSequence const& buffers,
                      flags_type flags,
                      boost::system::error_code & ec) {
-        return get_service().send(implementation, buffers, flags, ec);
+        return get_service().send(get_implementation(), buffers, flags, ec);
     }
 
     /** \brief Send some data to the socket
@@ -448,7 +448,7 @@ public:
     std::size_t send(message const& msg,
                      flags_type flags,
                      boost::system::error_code & ec) {
-        return get_service().send(implementation, msg, flags, ec);
+        return get_service().send(get_implementation(), msg, flags, ec);
     }
 
     /** \brief Send some data from the socket
@@ -459,7 +459,7 @@ public:
     std::size_t send(message const& msg,
                      flags_type flags = 0) {
         boost::system::error_code ec;
-        auto res = get_service().send(implementation, msg, flags, ec);
+        auto res = get_service().send(get_implementation(), msg, flags, ec);
         if (ec)
             throw boost::system::error_code(ec);
         return res;
@@ -470,7 +470,7 @@ public:
      * \return size_t number of bytes discarded
      */
     std::size_t flush(boost::system::error_code & ec) {
-        return get_service().flush(implementation, ec);
+        return get_service().flush(get_implementation(), ec);
     }
 
     /* \brief Flush remaining message parts from prior receive()
@@ -507,7 +507,7 @@ public:
                        ReadHandler && handler,
                        flags_type flags = 0) {
         using type = detail::receive_buffer_op<MutableBufferSequence, ReadHandler>;
-        get_service().enqueue<type>(implementation, detail::socket_service::op_type::read_op,
+        get_service().enqueue<type>(get_implementation(), detail::socket_service::op_type::read_op,
                                     buffers, std::forward<ReadHandler>(handler), flags);
     }
 
@@ -536,7 +536,7 @@ public:
                             ReadMoreHandler && handler,
                             flags_type flags = 0) {
         using type = detail::receive_more_buffer_op<MutableBufferSequence, ReadMoreHandler>;
-        get_service().enqueue<type>(implementation, detail::socket_service::op_type::read_op,
+        get_service().enqueue<type>(get_implementation(), detail::socket_service::op_type::read_op,
                                     buffers, std::forward<ReadMoreHandler>(handler), flags);
     }
 
@@ -562,7 +562,7 @@ public:
     void async_receive(MessageReadHandler && handler,
                        flags_type flags = 0) {
         using type = detail::receive_op<MessageReadHandler>;
-        get_service().enqueue<type>(implementation, detail::socket_service::op_type::read_op,
+        get_service().enqueue<type>(get_implementation(), detail::socket_service::op_type::read_op,
                                     std::forward<MessageReadHandler>(handler), flags);
     }
 
@@ -582,7 +582,7 @@ public:
                     WriteHandler && handler,
                     flags_type flags = 0) {
         using type = detail::send_buffer_op<ConstBufferSequence, WriteHandler>;
-        get_service().enqueue<type>(implementation, detail::socket_service::op_type::write_op,
+        get_service().enqueue<type>(get_implementation(), detail::socket_service::op_type::write_op,
                                     buffers, std::forward<WriteHandler>(handler), flags);
     }
 
@@ -597,7 +597,7 @@ public:
                     WriteHandler && handler,
                     flags_type flags = 0) {
         using type = detail::send_op<WriteHandler>;
-        get_service().enqueue<type>(implementation, detail::socket_service::op_type::write_op,
+        get_service().enqueue<type>(get_implementation(), detail::socket_service::op_type::write_op,
                                     msg, std::forward<WriteHandler>(handler), flags);
     }
 
@@ -607,7 +607,7 @@ public:
      */
     boost::system::error_code shutdown(shutdown_type what,
                                        boost::system::error_code & ec) {
-        return get_service().shutdown(implementation, what, ec);
+        return get_service().shutdown(get_implementation(), what, ec);
     }
 
     /** \brief Initiate shutdown of socket
@@ -624,7 +624,7 @@ public:
      *  \param ec set to indicate what, if any, error occurred
      */
     boost::system::error_code cancel(boost::system::error_code & ec) {
-        return get_service().cancel(implementation, ec);
+        return get_service().cancel(get_implementation(), ec);
     }
 
     /** \brief Cancel all outstanding asynchronous operations
@@ -632,7 +632,7 @@ public:
      */
     void cancel() {
         boost::system::error_code ec;
-        if (get_service().cancel(implementation, ec))
+        if (get_service().cancel(get_implementation(), ec))
             throw boost::system::system_error(ec);
     }
 
@@ -640,7 +640,7 @@ public:
      *  \remark With great power, comes great responsibility
      */
     native_handle_type native_handle() {
-        return get_service().native_handle(implementation);
+        return get_service().native_handle(get_implementation());
     }
 
     /** \brief monitor events on a socket
@@ -652,7 +652,7 @@ public:
     socket monitor(boost::asio::io_service & ios,
                    int events,
                    boost::system::error_code & ec) {
-        auto uri = get_service().monitor(implementation, events, ec);
+        auto uri = get_service().monitor(get_implementation(), events, ec);
         socket res(ios, ZMQ_PAIR);
         if (ec)
             return res;
@@ -678,7 +678,7 @@ public:
 
     friend std::ostream& operator<<(std::ostream& stm, const socket& that) {
         auto& s = const_cast<socket&>(that);
-        s.get_service().format(s.implementation, stm);
+        s.get_service().format(s.get_implementation(), stm);
         return stm;
     }
 };

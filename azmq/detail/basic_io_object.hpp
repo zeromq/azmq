@@ -23,7 +23,7 @@ namespace detail {
         template<typename T>
         core_access(T & that)
             : service_(that.get_service())
-            , impl_(that.implementation)
+            , impl_(that.get_implementation())
         { }
 
         service_type & service() { return service_; }
