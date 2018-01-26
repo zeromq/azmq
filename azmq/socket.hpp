@@ -607,7 +607,7 @@ public:
      */
     boost::system::error_code shutdown(shutdown_type what,
                                        boost::system::error_code & ec) {
-        return get_service().shutdown(get_implementation(), what, ec);
+        return get_service().descriptor_shutdown(get_implementation(), what, ec);
     }
 
     /** \brief Initiate shutdown of socket
