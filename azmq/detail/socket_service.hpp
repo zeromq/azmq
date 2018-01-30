@@ -645,7 +645,7 @@ namespace detail {
             }
 
             friend
-            bool asio_handler_is_continuation(deferred_completion* handler) { return true; }
+            bool asio_handler_is_continuation(deferred_completion* /*handler*/) { return true; }
         };
 
         descriptor_map descriptors_;
