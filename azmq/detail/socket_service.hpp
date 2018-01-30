@@ -326,9 +326,9 @@ namespace detail {
             return ec;
         }
 
-        boost::system::error_code shutdown(implementation_type & impl,
-                                           shutdown_type what,
-                                           boost::system::error_code & ec) {
+        boost::system::error_code descriptor_shutdown(implementation_type & impl,
+                                                      shutdown_type what,
+                                                      boost::system::error_code & ec) {
             unique_lock l{ *impl };
             if (impl->shutdown_ < what)
                 impl->shutdown_ = what;
