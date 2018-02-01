@@ -15,7 +15,7 @@
 #include <boost/assert.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/thread/mutex.hpp>
-#include <boost/thread/lock_guard.hpp>
+#include <boost/thread/locks.hpp>
 
 #include <zmq.h>
 
@@ -36,7 +36,7 @@ namespace detail {
         }
 
         static context_type get_context(bool create_new = false) {
-            static lock_type::mutex_type mtx;
+            static boost::mutex mtx;
             static std::weak_ptr<void> ctx;
 
             if (create_new) return ctx_new();
@@ -74,4 +74,3 @@ namespace detail {
 } // namespace azmq
 
 #endif // AZMQ_DETAIL_CONTEXT_OPS_HPP__
-
