@@ -13,7 +13,10 @@
 #include "util/scope_guard.hpp"
 
 #include <boost/assert.hpp>
-#include <boost/utility/string_ref.hpp>
+#include <boost/version.hpp>
+#if BOOST_VERSION >= 105300
+    #include <boost/utility/string_ref.hpp>
+#endif
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/system/system_error.hpp>
@@ -129,9 +132,11 @@ AZMQ_V1_INLINE_NAMESPACE_BEGIN
                 throw boost::system::system_error(make_error_code());
         }
 
+#if BOOST_VERSION >= 105300
         explicit message(boost::string_ref str)
             : message(boost::asio::buffer(str.data(), str.size()))
         { }
+#endif
 
         message(message && rhs) BOOST_NOEXCEPT
             : msg_(rhs.msg_)
