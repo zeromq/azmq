@@ -1,0 +1,11 @@
+# This file is configured at cmake time, and loaded at cpack time.
+# To pass variables to cpack from cmake, they must be configured
+# in this file.
+
+if(CPACK_GENERATOR STREQUAL "DEB")
+    set(CPACK_PACKAGE_FILE_NAME         "@CPACK_DEBIAN_PACKAGE_NAME@_@CPACK_PACKAGE_VERSION@_@CPACK_DEBIAN_PACKAGE_ARCHITECTURE@")
+endif()
+
+if(CPACK_GENERATOR MATCHES "RPM")
+    set(CPACK_PACKAGE_FILE_NAME         "@CPACK_RPM_PACKAGE_NAME@-@CPACK_PACKAGE_VERSION@.@CPACK_RPM_PACKAGE_ARCHITECTURE@")
+endif()
