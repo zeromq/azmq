@@ -461,7 +461,7 @@ public:
         boost::system::error_code ec;
         auto res = get_service().send(get_implementation(), msg, flags, ec);
         if (ec)
-            throw boost::system::error_code(ec);
+            throw boost::system::system_error(ec);
         return res;
     }
 
@@ -481,7 +481,7 @@ public:
         boost::system::error_code ec;
         auto res = flush(ec);
         if (ec)
-            throw boost::system::error_code(ec);
+            throw boost::system::system_error(ec);
         return res;
     }
 
