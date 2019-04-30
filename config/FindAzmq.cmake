@@ -31,13 +31,14 @@ endfunction()
 
 _azmqver_EXTRACT("AZMQ_VERSION_MAJOR" Azmq_VERSION_MAJOR)
 _azmqver_EXTRACT("AZMQ_VERSION_MINOR" Azmq_VERSION_MINOR)
+_azmqver_EXTRACT("AZMQ_VERSION_PATCH" Azmq_VERSION_PATCH)
 
-set(Azmq_FIND_VERSION_EXACT "${Azmq_VERSION_MAJOR}.${Azmq_VERSION_MINOR}")
+set(Azmq_FIND_VERSION_EXACT "${Azmq_VERSION_MAJOR}.${Azmq_VERSION_MINOR}.${Azmq_VERSION_PATCH}")
 find_package_handle_standard_args(Azmq FOUND_VAR Azmq_FOUND
   REQUIRED_VARS Azmq_INCLUDE_DIRS
   VERSION_VAR Azmq_VERSION)
 
 if (Azmq_FOUND)
     mark_as_advanced(Azmq_FIND_VERSION_EXACT Azmq_VERSION Azmq_INCLUDE_DIRS Azmq_LIBRARIES)
-    message(STATUS "Azmq version: ${Azmq_VERSION_MAJOR}.${Azmq_VERSION_MINOR}")
+    message(STATUS "Azmq version: ${Azmq_FIND_VERSION_EXACT}")
 endif()
