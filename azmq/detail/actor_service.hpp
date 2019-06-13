@@ -24,7 +24,7 @@
 #include <boost/asio/signal_set.hpp>
 #include <boost/container/flat_map.hpp>
 
-#if BOOST_VERSION < 10700
+#if BOOST_VERSION < 107000
 #   define AZMQ_DETAIL_USE_IO_SERVICE 1
 #endif
 
