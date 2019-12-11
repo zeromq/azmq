@@ -43,7 +43,7 @@ public:
     }
 
 private:
-    ConstBufferSequence const& buffers_;
+    ConstBufferSequence buffers_;
     flags_type flags_;
 };
 

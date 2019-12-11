@@ -160,6 +160,120 @@ TEST_CASE( "Send/Receive async", "[socket_ops]" ) {
     REQUIRE(btb == 9);
 }
 
+TEST_CASE( "Async send/receive copies buffer refs", "[socket_ops]" ) {
+    // Similar test as above, but with temporary boost::asio::const_buffer/boost::asio::mutable_buffer objects,
+    // which should be copied to be stored internally.
+
+    class Base {
+    protected:
+        boost::asio::io_service ioservice;
+        azmq::pair_socket sock;
+        boost::system::error_code error;
+        size_t bytes = 0;
+
+    public:
+        Base() : sock(ioservice) {
+        }
+
+        virtual ~Base() { }
+
+        void bind(const std::string &addr) {
+            sock.bind(addr);
+        }
+
+        void connect(const std::string &addr) {
+            sock.connect(addr);
+        }
+
+        void run() {
+            ioservice.run();
+        }
+
+        boost::system::error_code get_error() const {
+            return error;
+        }
+
+        size_t get_bytes_transferred() const {
+            return bytes;
+        }
+    };
+
+    class Sender : public Base {
+        const std::array<char, 3> data = {{'a', 'b', 'c'}};
+
+    public:
+        Sender() : Base() {
+        }
+
+        void start_send() {
+            sock.async_send(boost::asio::buffer(data),
+                [this](boost::system::error_code const& ec, size_t bytes_transferred) {
+                    SCOPE_EXIT { ioservice.stop(); };
+                    error = ec;
+                    bytes = bytes_transferred;
+                }
+            );
+        }
+
+        const std::array<char, 3> &get_data() const {
+            return data;
+        }
+    };
+
+    class Receiver : public Base {
+        std::array<char, 3> data = {{0, 0, 0}};
+
+    public:
+        Receiver() : Base() {
+        }
+
+        void start_receive() {
+            sock.async_receive(boost::asio::buffer(data),
+                [this](boost::system::error_code const& ec, size_t bytes_transferred) {
+                    SCOPE_EXIT { ioservice.stop(); };
+                    error = ec;
+                    bytes = bytes_transferred;
+                }
+            );
+        }
+
+        const std::array<char, 3> &get_data() const {
+            return data;
+        }
+    };
+
+    static const char ENDPOINT[] = "tcp://127.0.0.1:9998";
+
+    Sender sender;
+    sender.bind(ENDPOINT);
+    sender.start_send();
+
+    Receiver receiver;
+    CHECK(receiver.get_bytes_transferred() == 0);
+    CHECK(receiver.get_data() != sender.get_data());
+
+    std::thread senderthread([&sender]() {
+        sender.run();
+    });
+
+    std::thread receiverthread([&receiver]() {
+        receiver.connect(ENDPOINT);
+        receiver.start_receive();
+        receiver.run();
+    });
+
+    senderthread.join();
+    receiverthread.join();
+
+    CHECK(sender.get_error() == boost::system::error_code());
+    CHECK(sender.get_bytes_transferred() == sender.get_data().size());
+
+    CHECK(receiver.get_error() == boost::system::error_code());
+    CHECK(receiver.get_bytes_transferred() == sender.get_data().size());
+
+    CHECK(receiver.get_data() == sender.get_data());
+}
+
 TEST_CASE( "Send/Receive async is_speculative", "[socket_ops]" ) {
     boost::asio::io_service ios_b;
     boost::asio::io_service ios_c;
