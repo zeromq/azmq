@@ -13,3 +13,6 @@
 *.a
 *.pyc
 build/*
+
+# VS Code
+.vscode/

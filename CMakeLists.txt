@@ -35,7 +35,7 @@ if(USE_LIBCXX)
     set(ADDITIONAL_LIBS "pthread")
 endif()
 
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/config")
+#set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/config")
 
 find_package(Boost 1.48 COMPONENTS system date_time thread chrono regex random REQUIRED)
 find_package(ZeroMQ 4.0 REQUIRED)
@@ -48,7 +48,7 @@ if (NOT CMAKE_THREAD_LIBS_INIT)
 endif()
 
 include_directories(${Boost_INCLUDE_DIRS}
-                    ${ZeroMQ_INCLUDE_DIRS}
+                    ${ZeroMQ_INCLUDE_DIR}
                     ${PROJECT_SOURCE_DIR})
 
 if(NOT AZMQ_NO_TESTS)
