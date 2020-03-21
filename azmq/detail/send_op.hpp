@@ -13,7 +13,7 @@
 #include "socket_ops.hpp"
 #include "reactor_op.hpp"
 
-#include <boost/asio/io_service.hpp>
+#include <boost/asio/io_context.hpp>
 
 #include <zmq.h>
 #include <iterator>

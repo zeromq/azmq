@@ -24,10 +24,6 @@
 #include <boost/asio/signal_set.hpp>
 #include <boost/container/flat_map.hpp>
 
-#if BOOST_VERSION < 10700
-#   define AZMQ_DETAIL_USE_IO_SERVICE 1
-#endif
-
 #include <string>
 #include <vector>
 #include <memory>
@@ -42,11 +38,7 @@ namespace detail {
     public:
         inline static std::string get_uri(const char* pfx);
 
-#ifdef AZMQ_DETAIL_USE_IO_SERVICE
-        actor_service(boost::asio::io_service & ios)
-#else
-        actor_service(boost::asio::io_context & ios)	  
-#endif
+        actor_service(boost::asio::io_context& ios)
             : azmq::detail::service_base<actor_service>(ios)
         { }
 
@@ -59,19 +51,11 @@ namespace detail {
 
         template<typename T>
         socket make_pipe(bool defer_start, T&& data) {
-#ifdef AZMQ_DETAIL_USE_IO_SERVICE
-            return make_pipe(get_io_service(), defer_start, std::forward<T>(data));
-#else
-            return make_pipe(get_io_context(), defer_start, std::forward<T>(data));	    
-#endif
+        return make_pipe(get_io_context(), defer_start, std::forward<T>(data));
         }
 
         template<typename T>
-#ifdef AZMQ_DETAIL_USE_IO_SERVICE
-        static socket make_pipe(boost::asio::io_service & ios, bool defer_start, T&& data) {
-#else
-        static socket make_pipe(boost::asio::io_context & ios, bool defer_start, T&& data) {
-#endif	  
+        static socket make_pipe(boost::asio::io_context& ios, bool defer_start, T&& data) {
             auto p = std::make_shared<model<T>>(std::forward<T>(data));
             auto res = p->peer_socket(ios);
             associate_ext(res, handler(std::move(p), defer_start));
@@ -82,7 +66,7 @@ namespace detail {
         struct concept {
             using ptr = std::shared_ptr<concept>;
 
-            boost::asio::io_service io_service_;
+            boost::asio::io_context io_context_;
             boost::asio::signal_set signals_;
             pair_socket socket_;
             thread_t thread_;
@@ -95,8 +79,8 @@ namespace detail {
             std::exception_ptr last_error_;
 
             concept()
-                : signals_(io_service_, SIGINT, SIGTERM)
-                , socket_(io_service_)
+                : signals_(io_context_, SIGINT, SIGTERM)
+                , socket_(io_context_)
                 , ready_(false)
                 , stopped_(true)
             {
@@ -105,11 +89,7 @@ namespace detail {
 
             virtual ~concept() = default;
 
-#ifdef AZMQ_DETAIL_USE_IO_SERVICE
-            pair_socket peer_socket(boost::asio::io_service & peer) {
-#else	      
-            pair_socket peer_socket(boost::asio::io_context & peer) {
-#endif
+            pair_socket peer_socket(boost::asio::io_context& peer) {
                 pair_socket res(peer);
                 auto uri = socket_.endpoint();
                 BOOST_ASSERT_MSG(!uri.empty(), "uri empty");
@@ -121,7 +101,7 @@ namespace detail {
 
             void stop() {
                 if (!joinable()) return;
-                io_service_.stop();
+                io_context_.stop();
                 thread_.join();
             }
 
@@ -165,7 +145,7 @@ namespace detail {
             static void run(ptr p) {
                 lock_type l { p->mutex_ };
                 p->signals_.async_wait([p](boost::system::error_code const&, int) {
-                    p->io_service_.stop();
+                    p->io_context_.stop();
                 });
                 p->stopped_ = false;
                 p->thread_ = thread_t([p] {
@@ -200,7 +180,7 @@ namespace detail {
                 , defer_start_(defer_start)
             { }
 
-            void on_install(boost::asio::io_service&, void*) {
+            void on_install(boost::asio::io_context&, void*) {
                 if (defer_start_) return;
                 defer_start_ = false;
                 concept::run(p_);
