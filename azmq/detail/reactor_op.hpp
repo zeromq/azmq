@@ -13,7 +13,7 @@
 #include "socket_ops.hpp"
 
 #include <boost/optional.hpp>
-#include <boost/asio/io_service.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/intrusive/list.hpp>
 
 namespace azmq {

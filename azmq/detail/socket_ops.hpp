@@ -17,13 +17,7 @@
 #include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/regex.hpp>
-#include <boost/asio/io_service.hpp>
-#include <boost/asio/socket_base.hpp>
-#if ! defined BOOST_ASIO_WINDOWS
-    #include <boost/asio/posix/stream_descriptor.hpp>
-#else
-    #include <boost/asio/ip/tcp.hpp>
-#endif
+#include <boost/asio.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
@@ -89,7 +83,7 @@ namespace detail {
             return socket_type(res);
         }
 
-        static stream_descriptor get_stream_descriptor(boost::asio::io_service & io_service,
+        static stream_descriptor get_stream_descriptor(boost::asio::io_context& ctx,
                                                        socket_type & socket,
                                                        boost::system::error_code & ec) {
             BOOST_ASSERT_MSG(socket, "invalid socket");
@@ -101,13 +95,13 @@ namespace detail {
                 ec = make_error_code();
             else {
 #if ! defined BOOST_ASIO_WINDOWS
-                res.reset(new boost::asio::posix::stream_descriptor(io_service, handle));
+                res.reset(new boost::asio::posix::stream_descriptor(ctx, handle));
 #else
                 // Use duplicated SOCKET, because ASIO socket takes ownership over it so destroys one in dtor.
                 ::WSAPROTOCOL_INFO pi;
                 ::WSADuplicateSocket(handle, ::GetCurrentProcessId(), &pi);
                 handle = ::WSASocket(pi.iAddressFamily/*AF_INET*/, pi.iSocketType/*SOCK_STREAM*/, pi.iProtocol/*IPPROTO_TCP*/, &pi, 0, 0);
-                res.reset(new boost::asio::ip::tcp::socket(io_service, boost::asio::ip::tcp::v4(), handle));
+                res.reset(new boost::asio::ip::tcp::socket(ctx, boost::asio::ip::tcp::v4(), handle));
 #endif
             }
             return res;

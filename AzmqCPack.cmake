@@ -8,8 +8,8 @@ in general, and Asio in particular.
 
 The main abstraction exposed by the library is azmq::socket which
 provides an Asio style socket interface to the underlying zeromq socket
-and interfaces with Asio's io_service().  The socket implementation
-participates in the io_service's reactor for asynchronous IO and
+and interfaces with Asio's io_context().  The socket implementation
+participates in the io_context's reactor for asynchronous IO and
 may be freely mixed with other Asio socket types (raw TCP/UDP/Serial/etc.).")
 set(CPACK_PACKAGE_VERSION               "1.1.0")
 
