@@ -59,16 +59,9 @@ public:
         , handler_(std::move(handler))
     { }
 
-    static void do_complete(reactor_op* base,
-                            const boost::system::error_code &,
-                            size_t) {
+    static void do_complete(reactor_op* base) {
         auto o = static_cast<send_buffer_op*>(base);
-        auto h = std::move(o->handler_);
-        auto ec = o->ec_;
-        auto bt = o->bytes_transferred_;
-        delete o;
-
-        h(ec, bt);
+        o->handler_(o->ec_, o->bytes_transferred_);
     }
 
 private:
@@ -110,15 +103,9 @@ public:
         , handler_(std::move(handler))
     { }
 
-    static void do_complete(reactor_op* base,
-                            const boost::system::error_code &,
-                            size_t) {
+    static void do_complete(reactor_op* base) {
         auto o = static_cast<send_op*>(base);
-        auto h = std::move(o->handler_);
-        auto ec = o->ec_;
-        auto bt = o->bytes_transferred_;
-        delete o;
-        h(ec, bt);
+        o->handler_(o->ec_, o->bytes_transferred_);
     }
 
 private:

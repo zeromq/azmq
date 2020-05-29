@@ -693,3 +693,12 @@ TEST_CASE( "Loopback", "[socket]" ) {
     REQUIRE(s.ec == boost::system::error_code());
     REQUIRE(s.ct == ct);
 }
+
+TEST_CASE( "socket_service does not call pending completion handlers when destroyed", "[socket]" ) {
+    boost::asio::io_service ioservice;
+    azmq::socket socket(ioservice, ZMQ_ROUTER);
+    socket.bind(subj(BOOST_CURRENT_FUNCTION));
+    socket.async_receive([](boost::system::error_code const& ec, azmq::message & msg, size_t bytes_transferred) {
+        FAIL();
+    });
+}

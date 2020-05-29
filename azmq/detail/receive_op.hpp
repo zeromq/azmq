@@ -65,15 +65,9 @@ public:
         , handler_(std::move(handler))
         { }
 
-    static void do_complete(reactor_op* base,
-                            const boost::system::error_code &,
-                            size_t) {
+    static void do_complete(reactor_op* base) {
         auto o = static_cast<receive_buffer_op*>(base);
-        auto h = std::move(o->handler_);
-        auto ec = o->ec_;
-        auto bt = o->bytes_transferred_;
-        delete o;
-        h(ec, bt);
+        o->handler_(o->ec_, o->bytes_transferred_);
     }
 
 private:
@@ -92,16 +86,9 @@ public:
         , handler_(std::move(handler))
         { }
 
-    static void do_complete(reactor_op* base,
-                            const boost::system::error_code &,
-                            size_t) {
+    static void do_complete(reactor_op* base) {
         auto o = static_cast<receive_more_buffer_op*>(base);
-        auto h = std::move(o->handler_);
-        auto ec = o->ec_;
-        auto bt = o->bytes_transferred_;
-        auto m = o->more();
-        delete o;
-        h(ec, std::make_pair(bt, m));
+        o->handler_(o->ec_, std::make_pair(o->bytes_transferred_, o->more()));
     }
 
 private:
@@ -140,16 +127,9 @@ public:
         , handler_(std::move(handler))
         { }
 
-    static void do_complete(reactor_op* base,
-                            const boost::system::error_code &,
-                            size_t) {
+    static void do_complete(reactor_op* base) {
         auto o = static_cast<receive_op*>(base);
-        auto h = std::move(o->handler_);
-        auto m = std::move(o->msg_);
-        auto ec = o->ec_;
-        auto bt = o->bytes_transferred_;
-        delete o;
-        h(ec, m, bt);
+        o->handler_(o->ec_, o->msg_, o->bytes_transferred_);
     }
 
 private:
