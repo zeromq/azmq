@@ -115,7 +115,7 @@ namespace detail {
                      | (!op_queues_[write_op].empty() ? ZMQ_POLLOUT : 0);
             }
 
-            bool perform_ops(op_queue_type & ops, boost::system::error_code& ec) {
+            bool perform_ops(op_queue_type& ops, boost::system::error_code& ec) {
                 const int filter[max_ops] = { ZMQ_POLLIN, ZMQ_POLLOUT };
                 while(int evs = socket_ops::get_events(socket_, ec)& events_mask()) {
                     if (ec)
@@ -511,12 +511,16 @@ namespace detail {
                                             : what >= shutdown_type::receive;
         }
 
+        static void complete_ops(const op_queue_type &ops) {
+            for (const auto &op : ops) {
+                op->do_complete();
+            }
+        }
+
         static void cancel_ops(implementation_type & impl) {
             op_queue_type ops;
             impl->cancel_ops(reactor_op::canceled(), ops);
-            for (const auto &op : ops) {
-                reactor_op::do_complete(op.get());
-            }
+            complete_ops(ops);
         }
 
         using weak_descriptor_ptr = std::weak_ptr<per_descriptor_data>;
@@ -537,9 +541,7 @@ namespace detail {
                 if (ec)
                     impl->cancel_ops(ec, ops);
             }
-            for (const auto &op : ops) {
-                reactor_op::do_complete(op.get());
-            }
+            complete_ops(ops);
         }
 
         void check_missed_events(implementation_type & impl)
@@ -621,9 +623,7 @@ namespace detail {
                     else
                         descriptors_.unregister_descriptor(p);
                 }
-                for (const auto &op : ops) {
-                    reactor_op::do_complete(op.get());
-                }
+                complete_ops(ops);
             }
 
             static void schedule(descriptor_map & descriptors, implementation_type & impl) {
@@ -658,7 +658,7 @@ namespace detail {
             { }
 
             void operator()() {
-                reactor_op::do_complete(op_.get());
+                op_->do_complete();
                 if (auto p = owner_.lock()) {
                     unique_lock l{ *p };
                     p->in_speculative_completion_ = false;
@@ -677,7 +677,7 @@ namespace detail {
             if (is_shutdown(impl, o, ec)) {
                 BOOST_ASSERT_MSG(op, "op ptr");
                 op->ec_ = ec;
-                reactor_op::do_complete(op.get());
+                op->do_complete();
                 return;
             }
 
@@ -689,10 +689,11 @@ namespace detail {
                         impl->in_speculative_completion_ = true;
                         l.unlock();
 #ifdef AZMQ_DETAIL_USE_IO_SERVICE			
-                        get_io_service().post(deferred_completion(impl, std::move(op)));
+                        get_io_service()
 #else
-                        get_io_context().post(deferred_completion(impl, std::move(op)));
+                        get_io_context()
 #endif
+                            .post(deferred_completion(impl, std::move(op)));
                         return;
                     }
                 }
