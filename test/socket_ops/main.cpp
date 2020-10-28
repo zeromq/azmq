@@ -42,7 +42,7 @@ TEST_CASE( "Tcp Dynamic Binding Expressions", "[socket_ops]" ) {
     REQUIRE(ec == boost::system::error_code());
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    orig_uri = { "tcp://127.0.0.1:!" };
+    orig_uri = "tcp://127.0.0.1:!";
     uri = orig_uri;
     azmq::detail::socket_ops::bind(sb, uri, ec);
     REQUIRE(ec == boost::system::error_code());
@@ -51,7 +51,7 @@ TEST_CASE( "Tcp Dynamic Binding Expressions", "[socket_ops]" ) {
     REQUIRE(ec == boost::system::error_code());
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    orig_uri = { "tcp://127.0.0.1:*[60000-]" };
+    orig_uri = "tcp://127.0.0.1:*[60000-]";
     uri = orig_uri;
     azmq::detail::socket_ops::bind(sb, uri, ec);
     REQUIRE(ec == boost::system::error_code());
@@ -60,7 +60,7 @@ TEST_CASE( "Tcp Dynamic Binding Expressions", "[socket_ops]" ) {
     REQUIRE(ec == boost::system::error_code());
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    orig_uri = { "tcp://127.0.0.1:![-60000]" };
+    orig_uri = "tcp://127.0.0.1:![-60000]";
     uri = orig_uri;
     azmq::detail::socket_ops::bind(sb, uri, ec);
     REQUIRE(ec == boost::system::error_code());
@@ -69,7 +69,7 @@ TEST_CASE( "Tcp Dynamic Binding Expressions", "[socket_ops]" ) {
     REQUIRE(ec == boost::system::error_code());
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    orig_uri = { "tcp://127.0.0.1:![55000-55999]" };
+    orig_uri = "tcp://127.0.0.1:![55000-55999]";
     uri = orig_uri;
     azmq::detail::socket_ops::bind(sb, uri, ec);
     REQUIRE(ec == boost::system::error_code());
