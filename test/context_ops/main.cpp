@@ -34,7 +34,7 @@ TEST_CASE( "context_options", "[context]" ) {
     azmq::detail::context_ops::set_option(ctx, io_threads(2), ec);
     REQUIRE(!ec);
 
-    io_threads res;
+    io_threads res = 0;
     azmq::detail::context_ops::get_option(ctx, res, ec);
     REQUIRE(!ec);
     REQUIRE(res.value() == 2);
