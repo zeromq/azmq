@@ -80,18 +80,18 @@ namespace detail {
             size_t size() override { return data_.size(); }
         };
 
-        struct concept {
-            virtual ~concept() = default;
+        struct concept_ {
+            virtual ~concept_() = default;
 
             virtual void on_install(boost::asio::io_service &, void *) = 0;
             virtual void on_remove() = 0;
             virtual boost::system::error_code set_option(opt_concept const&, boost::system::error_code &) = 0;
             virtual boost::system::error_code get_option(opt_concept &, boost::system::error_code &) = 0;
         };
-        std::unique_ptr<concept> ptr_;
+        std::unique_ptr<concept_> ptr_;
 
         template<typename T>
-        struct model : concept {
+        struct model : concept_ {
             T data_;
 
             model(T data): data_(std::move(data)) { }

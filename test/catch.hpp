@@ -5070,7 +5070,12 @@ namespace Catch {
         }
 
         virtual void sectionEnded( SectionInfo const& info, Counts const& prevAssertions, double _durationInSeconds ) {
+#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201703L) || __cplusplus >= 201703L)
+            // std::uncaught_exception was deprecated in c++17, use std::uncaught_exceptions instead.
+            if( std::uncaught_exceptions() ) {
+#else
             if( std::uncaught_exception() ) {
+#endif
                 m_unfinishedSections.push_back( UnfinishedSections( info, prevAssertions, _durationInSeconds ) );
                 return;
             }
