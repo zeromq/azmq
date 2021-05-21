@@ -45,7 +45,7 @@ namespace detail {
 #ifdef AZMQ_DETAIL_USE_IO_SERVICE
         actor_service(boost::asio::io_service & ios)
 #else
-        actor_service(boost::asio::io_context & ios)	  
+        actor_service(boost::asio::io_context & ios)
 #endif
             : azmq::detail::service_base<actor_service>(ios)
         { }
@@ -62,7 +62,7 @@ namespace detail {
 #ifdef AZMQ_DETAIL_USE_IO_SERVICE
             return make_pipe(get_io_service(), defer_start, std::forward<T>(data));
 #else
-            return make_pipe(get_io_context(), defer_start, std::forward<T>(data));	    
+            return make_pipe(get_io_context(), defer_start, std::forward<T>(data));
 #endif
         }
 
@@ -71,7 +71,7 @@ namespace detail {
         static socket make_pipe(boost::asio::io_service & ios, bool defer_start, T&& data) {
 #else
         static socket make_pipe(boost::asio::io_context & ios, bool defer_start, T&& data) {
-#endif	  
+#endif
             auto p = std::make_shared<model<T>>(std::forward<T>(data));
             auto res = p->peer_socket(ios);
             associate_ext(res, handler(std::move(p), defer_start));
@@ -79,8 +79,8 @@ namespace detail {
         }
 
     private:
-        struct concept {
-            using ptr = std::shared_ptr<concept>;
+        struct concept_ {
+            using ptr = std::shared_ptr<concept_>;
 
             boost::asio::io_service io_service_;
             boost::asio::signal_set signals_;
@@ -94,7 +94,7 @@ namespace detail {
             bool stopped_;
             std::exception_ptr last_error_;
 
-            concept()
+            concept_()
                 : signals_(io_service_, SIGINT, SIGTERM)
                 , socket_(io_service_)
                 , ready_(false)
@@ -103,11 +103,11 @@ namespace detail {
                 socket_.bind(get_uri("pipe"));
             }
 
-            virtual ~concept() = default;
+            virtual ~concept_() = default;
 
 #ifdef AZMQ_DETAIL_USE_IO_SERVICE
             pair_socket peer_socket(boost::asio::io_service & peer) {
-#else	      
+#else
             pair_socket peer_socket(boost::asio::io_context & peer) {
 #endif
                 pair_socket res(peer);
@@ -181,7 +181,7 @@ namespace detail {
         };
 
         template<typename Function>
-        struct model : concept {
+        struct model : concept_ {
             Function data_;
 
             model(Function data)
@@ -192,10 +192,10 @@ namespace detail {
         };
 
         struct handler {
-            concept::ptr p_;
+            concept_::ptr p_;
             bool defer_start_;
 
-            handler(concept::ptr p, bool defer_start)
+            handler(concept_::ptr p, bool defer_start)
                 : p_(std::move(p))
                 , defer_start_(defer_start)
             { }
@@ -203,7 +203,7 @@ namespace detail {
             void on_install(boost::asio::io_service&, void*) {
                 if (defer_start_) return;
                 defer_start_ = false;
-                concept::run(p_);
+                concept_::run(p_);
             }
 
             void on_remove() {
@@ -228,7 +228,7 @@ namespace detail {
                     {
                         if (*static_cast<start::value_t const*>(opt.data()) && defer_start_) {
                             defer_start_ = false;
-                            concept::run(p_);
+                            concept_::run(p_);
                         }
                     }
                     break;
