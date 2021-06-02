@@ -585,16 +585,28 @@ TEST_CASE( "Socket Monitor", "[socket]" ) {
     ios_m.stop();
     t.join();
 
-    REQUIRE(client_monitor.events_.size() == 3);
-    CHECK(client_monitor.events_[0].e == ZMQ_EVENT_CONNECT_DELAYED);
-    CHECK(client_monitor.events_[1].e == ZMQ_EVENT_CONNECTED);
-    CHECK(client_monitor.events_[2].e == ZMQ_EVENT_MONITOR_STOPPED);
+    {
+        int i = 0;
+        CHECK(client_monitor.events_.at(i++).e == ZMQ_EVENT_CONNECT_DELAYED);
+        CHECK(client_monitor.events_.at(i++).e == ZMQ_EVENT_CONNECTED);
+        #ifdef ZMQ_EVENT_HANDSHAKE_SUCCEEDED
+          CHECK(client_monitor.events_.at(i++).e == ZMQ_EVENT_HANDSHAKE_SUCCEEDED);
+        #endif
+        CHECK(client_monitor.events_.at(i++).e == ZMQ_EVENT_MONITOR_STOPPED);
+        REQUIRE(client_monitor.events_.size() == i);
+  }
 
-    REQUIRE(server_monitor.events_.size() == 4);
-    CHECK(server_monitor.events_[0].e == ZMQ_EVENT_LISTENING);
-    CHECK(server_monitor.events_[1].e == ZMQ_EVENT_ACCEPTED);
-    CHECK(server_monitor.events_[2].e == ZMQ_EVENT_CLOSED);
-    CHECK(server_monitor.events_[3].e == ZMQ_EVENT_MONITOR_STOPPED);
+  {
+      int i = 0;
+      CHECK(server_monitor.events_.at(i++).e == ZMQ_EVENT_LISTENING);
+      CHECK(server_monitor.events_.at(i++).e == ZMQ_EVENT_ACCEPTED);
+      #ifdef ZMQ_EVENT_HANDSHAKE_SUCCEEDED
+        CHECK(server_monitor.events_.at(i++).e == ZMQ_EVENT_HANDSHAKE_SUCCEEDED);
+      #endif
+      CHECK(server_monitor.events_.at(i++).e == ZMQ_EVENT_CLOSED);
+      CHECK(server_monitor.events_.at(i++).e == ZMQ_EVENT_MONITOR_STOPPED);
+      REQUIRE(server_monitor.events_.size() == i);
+  }
 }
 
 TEST_CASE( "Attach Method", "[socket]" ) {
