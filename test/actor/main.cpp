@@ -16,7 +16,7 @@
 #include <iostream>
 
 #define CATCH_CONFIG_MAIN
-#include "../catch.hpp"
+#include <catch2/catch.hpp>
 
 std::array<boost::asio::const_buffer, 2> snd_bufs = {{
     boost::asio::buffer("A"),

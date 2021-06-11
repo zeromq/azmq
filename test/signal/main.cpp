@@ -11,7 +11,7 @@
 #include <boost/asio/io_service.hpp>
 
 #define CATCH_CONFIG_MAIN
-#include "../catch.hpp"
+#include <catch2/catch.hpp>
 
 TEST_CASE( "Send/Receive a signal", "[signal]" ) {
     boost::asio::io_service ios;

@@ -8,7 +8,7 @@
 #include <thread>
 
 #define CATCH_CONFIG_MAIN
-#include "../catch.hpp"
+#include <catch2/catch.hpp>
 
 auto ctx = azmq::detail::context_ops::get_context();
 
