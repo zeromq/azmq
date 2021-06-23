@@ -263,7 +263,7 @@ namespace detail {
                 ec = make_error_code();
                 return 0;
             }
-            return rc;
+            return static_cast<size_t>(rc);
         }
 
         template<typename ConstBufferSequence>
@@ -295,7 +295,7 @@ namespace detail {
                 ec = make_error_code();
                 return 0;
             }
-            return rc;
+            return static_cast<size_t>(rc);
         }
 
         template<typename MutableBufferSequence>
