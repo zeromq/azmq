@@ -25,7 +25,7 @@
     #include <boost/asio/ip/tcp.hpp>
 #endif
 #include <boost/system/error_code.hpp>
-#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/taus88.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 #include <boost/range/metafunctions.hpp>
 
@@ -141,7 +141,7 @@ namespace detail {
                                              : boost::lexical_cast<uint16_t>(last_str);
                 uint16_t port = first;
                 if (opcode[0] == '!') {
-                    static boost::random::mt19937 gen;
+                    static boost::random::taus88 gen;
                     boost::random::uniform_int_distribution<> port_range(port, last);
                     port = port_range(gen);
                 }
