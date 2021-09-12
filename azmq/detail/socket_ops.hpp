@@ -15,7 +15,6 @@
 
 #include <boost/assert.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/regex.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/socket_base.hpp>
 #if ! defined BOOST_ASIO_WINDOWS
@@ -33,6 +32,7 @@
 #include <cerrno>
 #include <iterator>
 #include <memory>
+#include <regex>
 #include <string>
 #include <sstream>
 #include <type_traits>
@@ -122,14 +122,14 @@ namespace detail {
                                               endpoint_type & ep,
                                               boost::system::error_code & ec) {
             BOOST_ASSERT_MSG(socket, "invalid socket");
-            const boost::regex simple_tcp("^tcp://.*:(\\d+)$");
-            const boost::regex dynamic_tcp("^(tcp://.*):([*!])(\\[(\\d+)?-(\\d+)?\\])?$");
-            boost::smatch mres;
+            static const std::regex simple_tcp("^tcp://.*:(\\d+)$");
+            static const std::regex dynamic_tcp("^(tcp://.*):([*!])(\\[(\\d+)?-(\\d+)?\\])?$");
+            std::smatch mres;
             int rc = -1;
-            if (boost::regex_match(ep, mres, simple_tcp)) {
+            if (std::regex_match(ep, mres, simple_tcp)) {
                 if (zmq_bind(socket.get(), ep.c_str()) == 0)
                     rc = boost::lexical_cast<uint16_t>(mres.str(1));
-            } else if (boost::regex_match(ep, mres, dynamic_tcp)) {
+            } else if (std::regex_match(ep, mres, dynamic_tcp)) {
                 auto const& hostname = mres.str(1);
                 auto const& opcode = mres.str(2);
                 auto const& first_str = mres.str(4);
