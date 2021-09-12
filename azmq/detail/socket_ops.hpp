@@ -14,7 +14,6 @@
 #include "context_ops.hpp"
 
 #include <boost/assert.hpp>
-#include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/regex.hpp>
 #include <boost/asio/io_service.hpp>
@@ -146,9 +145,8 @@ namespace detail {
                     port = port_range(gen);
                 }
                 auto attempts = last - first;
-                auto fmt = boost::format("%s:%d");
                 while (rc < 0 && attempts--) {
-                    ep = boost::str(fmt % hostname % port);
+                    ep = hostname + ":" + std::to_string(port);
                     if (zmq_bind(socket.get(), ep.c_str()) == 0)
                         rc = port;
                     if (++port > last)
