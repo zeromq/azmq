@@ -66,6 +66,7 @@ public:
     using immediate = opt::boolean<ZMQ_IMMEDIATE>;
     using router_mandatory = opt::boolean<ZMQ_ROUTER_MANDATORY>;
     using router_raw = opt::boolean<ZMQ_ROUTER_RAW>;
+    using router_handover = opt::boolean<ZMQ_ROUTER_HANDOVER>;
     using probe_router = opt::boolean<ZMQ_PROBE_ROUTER>;
     using xpub_verbose = opt::boolean<ZMQ_XPUB_VERBOSE>;
     using req_correlate = opt::boolean<ZMQ_REQ_CORRELATE>;
