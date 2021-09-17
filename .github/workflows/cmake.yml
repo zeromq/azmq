@@ -1,0 +1,99 @@
+name: CMake
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {
+            name: "ubuntu latest",
+            os: ubuntu-20.04,
+            boost_url: BOOST_177,
+            zmq_tag: "v4.3.4",
+            system_packages: "",
+            cc: "gcc",
+            cxx: "g++",
+          }
+          - {
+            name: "ubuntu20 stock",
+            os: ubuntu-20.04,
+            boost_url: system,
+            zmq_tag: system,
+            system_packages: "libboost-all-dev libzmq3-dev",
+            cc: "gcc",
+            cxx: "g++",
+          }
+          - {
+            name: "ubuntu oldest",
+            os: ubuntu-18.04,
+            boost_url: BOOST_168,
+            zmq_tag: "v4.3.0",
+            system_packages: "",
+            cc: "clang",
+            cxx: "clang++",
+          }
+          - {
+            name: "macos latest ",
+            os: macos-11,
+            boost_url: BOOST_177,
+            zmq_tag: "v4.3.2",
+            system_packages: "",
+            cc: "clang",
+            cxx: "clang++",
+          }
+          - {
+            name: "macos stock",
+            os: macos-11,
+            boost_url: system,
+            zmq_tag: system,
+            system_packages: "zmq boost",
+            cc: "clang",
+            cxx: "clang++",
+          }
+          - {
+            name: "macos oldest",
+            os: macos-10.15,
+            boost_url: BOOST_172,
+            zmq_tag: "v4.3.0",
+            system_packages: "",
+            cc: "clang",
+            cxx: "clang++",
+          }
+
+    runs-on: ${{ matrix.config.os }}
+
+    env:
+      CC: ${{ matrix.config.cc }}
+      CXX: ${{ matrix.config.cxx }}
+      PACKAGES: ${{ matrix.config.system_packages }}
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: buildtools on ubuntu
+        if: startsWith(matrix.config.name, 'ubuntu')
+        shell: bash
+        run: |
+          if [ -n "$PACKAGES" ]; then
+            sudo apt-get install -y $PACKAGES
+          fi
+      - name: buildtools on macos
+        if: startsWith(matrix.config.name, 'macos') && matrix.config.*.system_packages
+        shell: bash
+        run: |
+          if [ -n "$PACKAGES" ]; then
+            brew install $PACKAGES
+          fi
+      - name: build
+        shell: bash
+        run: |
+          cmake  -DBOOST_URL=${{matrix.config.boost_url}} -DZMQ_TAG=${{matrix.config.zmq_tag}} -S .github/workflows/cmake-superbuild  -B build
+          cmake --build build
+

@@ -104,7 +104,7 @@ Further examples may be found in doc/examples
 
 ## Build status
 
-[AZMQ build status](https://136.243.151.173:4433/project.html?projectId=Azmq&guest=1)
+![AZMQ build status](https://github.com/zeromq/azmq/actions/workflows/cmake.yml/badge.svg)
 
 ## Copying
 
