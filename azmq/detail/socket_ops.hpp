@@ -273,7 +273,7 @@ namespace detail {
         {
             size_t res = 0;
             auto last = std::distance(std::begin(buffers), std::end(buffers)) - 1;
-            auto index = 0u;
+            decltype(last) index = 0u;
             for (auto it = std::begin(buffers); it != std::end(buffers); ++it, ++index) {
                 auto f = index == last ? flags
                                        : flags | ZMQ_SNDMORE;
