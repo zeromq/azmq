@@ -39,3 +39,12 @@ TEST_CASE( "context_options", "[context]" ) {
     REQUIRE(!ec);
     REQUIRE(res.value() == 2);
 }
+
+TEST_CASE( "invalid option", "[context]" ) {
+  auto ctx = azmq::detail::context_ops::get_context();
+  using io_threads = azmq::detail::context_ops::io_threads;
+  boost::system::error_code ec;
+  azmq::detail::context_ops::set_option(ctx, io_threads(-1), ec);
+  REQUIRE(ec);
+  REQUIRE(ec.value() == EINVAL);
+}
