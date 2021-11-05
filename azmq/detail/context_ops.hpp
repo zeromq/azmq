@@ -28,7 +28,7 @@ namespace detail {
         using lock_type = boost::lock_guard<boost::mutex>;
 
         using io_threads = opt::integer<ZMQ_IO_THREADS>;
-        using max_sockets = opt::integer<ZMQ_MAXMSGSIZE>;
+        using max_sockets = opt::integer<ZMQ_MAX_SOCKETS>;
         using ipv6 = opt::boolean<ZMQ_IPV6>;
 
         static context_type ctx_new() {
