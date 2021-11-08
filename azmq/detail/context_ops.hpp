@@ -53,7 +53,7 @@ namespace detail {
                                                     boost::system::error_code & ec) {
             BOOST_ASSERT_MSG(ctx, "context must not be null");
             auto rc = zmq_ctx_set(ctx.get(), option.name(), option.value());
-            if (!rc)
+            if (rc < 0)
                 ec = make_error_code();
             return ec;
         }
