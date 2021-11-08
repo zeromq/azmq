@@ -1,16 +1,22 @@
 # Determine the Azmq::libzmq library
 #
 # This script is a wrapper around find_package and pkg-config
-# so inclusion of azmq just works for both install types of libzmq
+# so inclusion of azmq just works for both install types
 #
 # If you need different logic define the "Azmq::libzmq" target
 # before calling add_subdirectory or find azmq
 
 if (TARGET Azmq::libzmq)
-    # 1. allow overriding from the calling script
+    # allow overriding from the calling script
     message(STATUS "using provided Azmq::libzmq target")
+elseif (TARGET libzmq AND BUILD_SHARED_LIBS)
+    message(STATUS "using existing shared library target")
+    add_library(Azmq::libzmq ALIAS libzmq)
+elseif (TARGET libzmq-static AND NOT BUILD_SHARED_LIBS)
+    message(STATUS "using existing static library target")
+    add_library(Azmq::libzmq ALIAS libzmq-static)
 else ()
-    # 2. try finding the package
+    # try finding the package
     find_package(ZeroMQ QUIET)
     if (ZeroMQ_FOUND)
         # libzmq exports different targets depending on shared vs static
@@ -31,7 +37,7 @@ else ()
             endif ()
         endif ()
     else ()
-        # 3. fallback to pkg-config
+        # fallback to pkg-config
         message(STATUS "CMake libzmq package not found, trying again with pkg-config (normal install of zeromq)")
         find_package(PkgConfig REQUIRED)
         pkg_check_modules(LIBZMQ REQUIRED IMPORTED_TARGET GLOBAL libzmq)
