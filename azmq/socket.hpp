@@ -69,6 +69,7 @@ public:
     using router_handover = opt::boolean<ZMQ_ROUTER_HANDOVER>;
     using probe_router = opt::boolean<ZMQ_PROBE_ROUTER>;
     using xpub_verbose = opt::boolean<ZMQ_XPUB_VERBOSE>;
+    using xpub_nodrop = opt::integer<ZMQ_XPUB_NODROP>;
     using req_correlate = opt::boolean<ZMQ_REQ_CORRELATE>;
     using req_relaxed = opt::boolean<ZMQ_REQ_RELAXED>;
     using last_endpoint = opt::binary<ZMQ_LAST_ENDPOINT>;
