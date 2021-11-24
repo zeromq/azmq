@@ -557,6 +557,7 @@ TEST_CASE( "Socket Monitor", "[socket]" ) {
 
     using socket_ptr = std::unique_ptr<azmq::socket>;
     socket_ptr client(new azmq::socket(ios, ZMQ_DEALER));
+
     socket_ptr server(new azmq::socket(ios, ZMQ_DEALER));
 
     monitor_handler client_monitor(ios_m, *client, "client");
@@ -580,7 +581,7 @@ TEST_CASE( "Socket Monitor", "[socket]" ) {
     client.reset();
     server.reset();
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for(std::chrono::seconds(3));
 
     ios_m.stop();
     t.join();
