@@ -54,5 +54,6 @@ ExternalProject_Add(
         DEPENDS ${LIBS}
         CMAKE_ARGS ${CMAKE_ARGS} -DBUILD_TESTING=YES
         SOURCE_DIR ${CMAKE_SOURCE_DIR}/../../..
+        TEST_COMMAND ctest --repeat-until-fail 3
         TEST_BEFORE_INSTALL YES
 )
