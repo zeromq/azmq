@@ -24,7 +24,7 @@
 #include <chrono>
 
 #define CATCH_CONFIG_MAIN
-#include "../catch.hpp"
+#include <catch2/catch.hpp>
 
 std::array<boost::asio::const_buffer, 2> snd_bufs = {{
     boost::asio::buffer("A"),
@@ -519,7 +519,10 @@ struct monitor_handler {
                     return;
                 event_t event;
                 msg.buffer_copy(boost::asio::buffer(&event, sizeof(event)));
-                events_.push_back(event);
+                if (event.e != ZMQ_EVENT_DISCONNECTED)
+                {
+                    events_.push_back(event);
+                }
                 socket_.flush();
                 start();
             });
@@ -581,7 +584,7 @@ TEST_CASE( "Socket Monitor", "[socket]" ) {
     client.reset();
     server.reset();
 
-    std::this_thread::sleep_for(std::chrono::seconds(3));
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
     ios_m.stop();
     t.join();

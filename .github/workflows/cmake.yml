@@ -27,7 +27,7 @@ jobs:
             os: ubuntu-20.04,
             boost_url: system,
             zmq_tag: system,
-            system_packages: "libboost-all-dev libzmq3-dev",
+            system_packages: "libboost-all-dev libzmq3-dev ",
             cc: "gcc",
             cxx: "g++",
           }
@@ -54,7 +54,7 @@ jobs:
             os: macos-11,
             boost_url: system,
             zmq_tag: system,
-            system_packages: "zmq boost",
+            system_packages: "zmq boost ",
             cc: "clang",
             cxx: "clang++",
           }

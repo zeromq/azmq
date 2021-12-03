@@ -57,13 +57,7 @@ if(NOT AZMQ_NO_TESTS)
     enable_testing()
 endif()
 
-macro(add_catch_test name)
-    if (TEST_REPORT_FORMAT)
-        add_test(NAME ${name} COMMAND ${name} -r ${TEST_REPORT_FORMAT} -o "${name}.test_out.xml")
-    else()
-        add_test(NAME ${name} COMMAND ${name})
-    endif()
-endmacro()
+
 
 if(NOT AZMQ_NO_TESTS)
     add_subdirectory(test)
