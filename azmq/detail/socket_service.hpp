@@ -27,7 +27,6 @@
 #include <boost/version.hpp>
 #include <boost/assert.hpp>
 #include <boost/optional.hpp>
-#include <boost/intrusive/list.hpp>
 #include <boost/system/system_error.hpp>
 #include <boost/container/flat_map.hpp>
 #include <boost/thread/mutex.hpp>
@@ -44,6 +43,7 @@
 #include <vector>
 #include <tuple>
 #include <ostream>
+#include <deque>
 
 namespace azmq {
 namespace detail {
@@ -57,12 +57,8 @@ namespace detail {
         using flags_type = socket_ops::flags_type;
         using more_result_type = socket_ops::more_result_type;
         using context_type = context_ops::context_type;
-        using op_queue_type = boost::intrusive::list<reactor_op,
-                                    boost::intrusive::member_hook<
-                                        reactor_op,
-                                        boost::intrusive::list_member_hook<>,
-                                        &reactor_op::member_hook_
-                                    >>;
+        using reactor_op_ptr = std::unique_ptr<reactor_op>;
+        using op_queue_type = std::deque<reactor_op_ptr>;
         using exts_type = boost::container::flat_map<std::type_index, socket_ext>;
         using allow_speculative = opt::boolean<static_cast<int>(opt::limits::lib_socket_min)>;
 
@@ -91,7 +87,7 @@ namespace detail {
             exts_type exts_;
             endpoint_type endpoint_;
             bool serverish_ = false;
-            std::array<op_queue_type, max_ops> op_queue_;
+            std::array<op_queue_type, max_ops> op_queues_;
 
 #ifdef AZMQ_DETAIL_USE_IO_SERVICE
             void do_open(boost::asio::io_service & ios,
@@ -115,21 +111,20 @@ namespace detail {
             int events_mask() const
             {
                 static_assert(2 == max_ops, "2 == max_ops");
-                return (!op_queue_[read_op].empty() ? ZMQ_POLLIN : 0)
-                     | (!op_queue_[write_op].empty() ? ZMQ_POLLOUT : 0);
+                return (!op_queues_[read_op].empty() ? ZMQ_POLLIN : 0)
+                     | (!op_queues_[write_op].empty() ? ZMQ_POLLOUT : 0);
             }
 
-            bool perform_ops(op_queue_type & ops, boost::system::error_code& ec) {
+            bool perform_ops(op_queue_type& ops, boost::system::error_code& ec) {
                 const int filter[max_ops] = { ZMQ_POLLIN, ZMQ_POLLOUT };
                 while(int evs = socket_ops::get_events(socket_, ec)& events_mask()) {
                     if (ec)
                         break;
 
                     for (size_t i = 0; i != max_ops; ++i) {
-                        if ((evs & filter[i]) && op_queue_[i].front().do_perform(socket_)) {
-                            op_queue_[i].pop_front_and_dispose([&ops](reactor_op * op) {
-                                ops.push_back(*op);
-                            });
+                        if ((evs & filter[i]) && op_queues_[i].front()->do_perform(socket_)) {
+                            ops.push_back(std::move(op_queues_[i].front()));
+                            op_queues_[i].pop_front();
                         }
                     }
                 }
@@ -143,11 +138,10 @@ namespace detail {
 
             void cancel_ops(boost::system::error_code const& ec, op_queue_type & ops) {
                 for (size_t i = 0; i != max_ops; ++i) {
-                    while (!op_queue_[i].empty()) {
-                        op_queue_[i].front().ec_ = ec;
-                        op_queue_[i].pop_front_and_dispose([&ops](reactor_op * op) {
-                            ops.push_back(*op);
-                        });
+                    while (!op_queues_[i].empty()) {
+                        op_queues_[i].front()->ec_ = ec;
+                        ops.push_back(std::move(op_queues_[i].front()));
+                        op_queues_[i].pop_front();
                     }
                 }
             }
@@ -477,16 +471,9 @@ namespace detail {
             return r;
         }
 
-        using reactor_op_ptr = std::unique_ptr<reactor_op>;
         template<typename T, typename... Args>
         void enqueue(implementation_type & impl, op_type o, Args&&... args) {
-            reactor_op_ptr p{ new T(std::forward<Args>(args)...) };
-            boost::system::error_code ec = enqueue(impl, o, p);
-            if (ec) {
-                BOOST_ASSERT_MSG(p, "op ptr");
-                p->ec_ = ec;
-                reactor_op::do_complete(p.release());
-            }
+            enqueue(impl, o, std::unique_ptr<T>(new T(std::forward<Args>(args)...)));
         }
 
         boost::system::error_code cancel(implementation_type & impl,
@@ -524,11 +511,16 @@ namespace detail {
                                             : what >= shutdown_type::receive;
         }
 
+        static void complete_ops(const op_queue_type &ops) {
+            for (const auto &op : ops) {
+                op->do_complete();
+            }
+        }
+
         static void cancel_ops(implementation_type & impl) {
             op_queue_type ops;
             impl->cancel_ops(reactor_op::canceled(), ops);
-            while (!ops.empty())
-                ops.pop_front_and_dispose(reactor_op::do_complete);
+            complete_ops(ops);
         }
 
         using weak_descriptor_ptr = std::weak_ptr<per_descriptor_data>;
@@ -549,8 +541,7 @@ namespace detail {
                 if (ec)
                     impl->cancel_ops(ec, ops);
             }
-            while (!ops.empty())
-                ops.pop_front_and_dispose(reactor_op::do_complete);
+            complete_ops(ops);
         }
 
         void check_missed_events(implementation_type & impl)
@@ -632,8 +623,7 @@ namespace detail {
                     else
                         descriptors_.unregister_descriptor(p);
                 }
-                while (!ops.empty())
-                    ops.pop_front_and_dispose(reactor_op::do_complete);
+                complete_ops(ops);
             }
 
             static void schedule(descriptor_map & descriptors, implementation_type & impl) {
@@ -658,16 +648,17 @@ namespace detail {
 
         struct deferred_completion {
             weak_descriptor_ptr owner_;
-            reactor_op *op_;
+            // Using shared_ptr instead of unique_ptr here, so this completion handler is copy-constructible for asio
+            std::shared_ptr<reactor_op> op_;
 
             deferred_completion(implementation_type const& owner,
                                 reactor_op_ptr op)
                 : owner_(owner)
-                , op_(op.release())
+                , op_(std::move(op))
             { }
 
             void operator()() {
-                reactor_op::do_complete(op_);
+                op_->do_complete();
                 if (auto p = owner_.lock()) {
                     unique_lock l{ *p };
                     p->in_speculative_completion_ = false;
@@ -680,30 +671,35 @@ namespace detail {
 
         descriptor_map descriptors_;
 
-        boost::system::error_code enqueue(implementation_type & impl,
-                                        op_type o, reactor_op_ptr & op) {
+        void enqueue(implementation_type& impl, op_type o, reactor_op_ptr op) {
             unique_lock l{ *impl };
             boost::system::error_code ec;
-            if (is_shutdown(impl, o, ec))
-                return ec;
+            if (is_shutdown(impl, o, ec)) {
+                BOOST_ASSERT_MSG(op, "op ptr");
+                op->ec_ = ec;
+                op->do_complete();
+                return;
+            }
 
             // we have at most one speculative completion in flight at any time
             if (impl->allow_speculative_ && !impl->in_speculative_completion_) {
                 // attempt to execute speculatively when the op_queue is empty
-                if (impl->op_queue_[o].empty()) {
+                if (impl->op_queues_[o].empty()) {
                     if (op->do_perform(impl->socket_)) {
                         impl->in_speculative_completion_ = true;
                         l.unlock();
 #ifdef AZMQ_DETAIL_USE_IO_SERVICE			
-                        get_io_service().post(deferred_completion(impl, std::move(op)));
+                        get_io_service()
 #else
-                        get_io_context().post(deferred_completion(impl, std::move(op)));
+                        get_io_context()
 #endif
-                        return ec;
+                            .post(deferred_completion(impl, std::move(op)));
+                        return;
                     }
                 }
             }
-            impl->op_queue_[o].push_back(*op.release());
+
+            impl->op_queues_[o].push_back(std::move(op));
 
             if (!impl->scheduled_) {
                 impl->scheduled_ = true;
@@ -711,7 +707,7 @@ namespace detail {
             } else {
                 check_missed_events(impl);
             }
-            return ec;
+            return;
         }
     };
 

@@ -25,21 +25,16 @@ namespace detail {
 template<typename MutableBufferSequence>
 class receive_buffer_op_base : public reactor_op {
 public:
-    receive_buffer_op_base(MutableBufferSequence const& buffers,
-                           flags_type flags,
-                           complete_func_type complete_func)
-        : reactor_op(&receive_buffer_op_base::do_perform, complete_func)
-        , buffers_(buffers)
+    receive_buffer_op_base(MutableBufferSequence const& buffers, flags_type flags)
+        : buffers_(buffers)
         , flags_(flags)
         { }
 
-    static bool do_perform(reactor_op* base, socket_type & socket) {
-        auto o = static_cast<receive_buffer_op_base*>(base);
-        o->ec_ = boost::system::error_code();
-
-        o->bytes_transferred_ += socket_ops::receive(o->buffers_, socket, o->flags_ | ZMQ_DONTWAIT, o->ec_);
-        if (o->ec_)
-            return !o->try_again();
+    virtual bool do_perform(socket_type& socket) override {
+        ec_ = boost::system::error_code();
+        bytes_transferred_ += socket_ops::receive(buffers_, socket, flags_ | ZMQ_DONTWAIT, ec_);
+        if (ec_)
+            return !try_again();
         return true;
     }
 
@@ -60,20 +55,12 @@ public:
     receive_buffer_op(MutableBufferSequence const& buffers,
                       Handler handler,
                       socket_ops::flags_type flags)
-        : receive_buffer_op_base<MutableBufferSequence>(buffers, flags,
-                                                        &receive_buffer_op::do_complete)
+        : receive_buffer_op_base<MutableBufferSequence>(buffers, flags)
         , handler_(std::move(handler))
         { }
 
-    static void do_complete(reactor_op* base,
-                            const boost::system::error_code &,
-                            size_t) {
-        auto o = static_cast<receive_buffer_op*>(base);
-        auto h = std::move(o->handler_);
-        auto ec = o->ec_;
-        auto bt = o->bytes_transferred_;
-        delete o;
-        h(ec, bt);
+    virtual void do_complete() override {
+        handler_(this->ec_, this->bytes_transferred_);
     }
 
 private:
@@ -87,21 +74,12 @@ public:
     receive_more_buffer_op(MutableBufferSequence const& buffers,
                            Handler handler,
                            socket_ops::flags_type flags)
-        : receive_buffer_op_base<MutableBufferSequence>(buffers, flags,
-                                                        &receive_more_buffer_op::do_complete)
+        : receive_buffer_op_base<MutableBufferSequence>(buffers, flags)
         , handler_(std::move(handler))
         { }
 
-    static void do_complete(reactor_op* base,
-                            const boost::system::error_code &,
-                            size_t) {
-        auto o = static_cast<receive_more_buffer_op*>(base);
-        auto h = std::move(o->handler_);
-        auto ec = o->ec_;
-        auto bt = o->bytes_transferred_;
-        auto m = o->more();
-        delete o;
-        h(ec, std::make_pair(bt, m));
+    virtual void do_complete() override {
+        handler_(this->ec_, std::make_pair(this->bytes_transferred_, this->more()));
     }
 
 private:
@@ -110,19 +88,15 @@ private:
 
 class receive_op_base : public reactor_op {
 public:
-    receive_op_base(socket_ops::flags_type flags,
-                    complete_func_type complete_func)
-        : reactor_op(&receive_op_base::do_perform, complete_func)
-        , flags_(flags)
+    receive_op_base(socket_ops::flags_type flags)
+        : flags_(flags)
         { }
 
-    static bool do_perform(reactor_op* base, socket_type & socket) {
-        auto o = static_cast<receive_op_base*>(base);
-        o->ec_ = boost::system::error_code();
-
-        o->bytes_transferred_ = socket_ops::receive(o->msg_, socket, o->flags_ | ZMQ_DONTWAIT, o->ec_);
-        if (o->ec_)
-            return !o->try_again();
+    virtual bool do_perform(socket_type& socket) override {
+        ec_ = boost::system::error_code();
+        bytes_transferred_ = socket_ops::receive(msg_, socket, flags_ | ZMQ_DONTWAIT, ec_);
+        if (ec_)
+            return !try_again();
         return true;
     }
 
@@ -136,20 +110,12 @@ class receive_op : public receive_op_base {
 public:
     receive_op(Handler handler,
                socket_ops::flags_type flags)
-        : receive_op_base(flags, &receive_op::do_complete)
+        : receive_op_base(flags)
         , handler_(std::move(handler))
         { }
 
-    static void do_complete(reactor_op* base,
-                            const boost::system::error_code &,
-                            size_t) {
-        auto o = static_cast<receive_op*>(base);
-        auto h = std::move(o->handler_);
-        auto m = std::move(o->msg_);
-        auto ec = o->ec_;
-        auto bt = o->bytes_transferred_;
-        delete o;
-        h(ec, m, bt);
+    virtual void do_complete() override {
+        handler_(ec_, msg_, bytes_transferred_);
     }
 
 private:
