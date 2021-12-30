@@ -1,5 +1,8 @@
-find_package(Catch2)
-if ( NOT Catch2 )
+find_package(Catch2 2.13.7 QUIET)
+if(TARGET Catch2::Catch2)
+    message(STATUS "Using system installed Catch2 v${Catch2_VERSION}" )
+else()
+    message(STATUS "Fetching Catch2 from github")
     Include(FetchContent)
     FetchContent_Declare(
             Catch2
