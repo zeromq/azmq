@@ -14,6 +14,12 @@
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/asio/buffer.hpp>
 
+#if BOOST_VERSION >= 107000
+#include <boost/asio/use_future.hpp>
+#include <boost/asio/spawn.hpp>
+#include <boost/optional.hpp>
+#endif
+
 #include <array>
 #include <thread>
 #include <iostream>
@@ -731,3 +737,161 @@ TEST_CASE( "socket_service does not call pending completion handlers when destro
         FAIL();
     });
 }
+
+#if BOOST_VERSION >= 107000
+
+TEST_CASE("Async Operation Send/Receive with callback", "[socket_ops]") {
+    boost::asio::io_service ios_b;
+    boost::asio::io_service ios_c;
+
+    azmq::socket sb(ios_b, ZMQ_ROUTER);
+    sb.bind(subj(BOOST_CURRENT_FUNCTION));
+
+    azmq::socket sc(ios_c, ZMQ_DEALER);
+    sc.connect(subj(BOOST_CURRENT_FUNCTION));
+
+    boost::system::error_code ecc;
+    size_t btc = 0;
+
+    azmq::async_send(sc, snd_bufs, [&](boost::system::error_code const &ec, size_t bytes_transferred) {
+      SCOPE_EXIT
+      { ios_c.stop(); };
+      ecc = ec;
+      btc = bytes_transferred;
+    });
+
+    std::array<char, 5> ident;
+    std::array<char, 2> a;
+    std::array<char, 2> b;
+
+    std::array<boost::asio::mutable_buffer, 3> rcv_bufs = {{
+                                                               boost::asio::buffer(ident),
+                                                               boost::asio::buffer(a),
+                                                               boost::asio::buffer(b)
+                                                           }};
+
+    boost::system::error_code ecb;
+    size_t btb = 0;
+    azmq::async_receive(sb, rcv_bufs, [&](boost::system::error_code const &ec, size_t bytes_transferred) {
+      SCOPE_EXIT
+      { ios_b.stop(); };
+      ecb = ec;
+      btb = bytes_transferred;
+    });
+
+    ios_c.run();
+    ios_b.run();
+
+    REQUIRE(ecc == boost::system::error_code());
+    REQUIRE(btc == 4);
+    REQUIRE(ecb == boost::system::error_code());
+    REQUIRE(btb == 9);
+}
+
+TEST_CASE("Async Operation Send/Receive with future ", "[socket_ops]") {
+    boost::asio::io_service ios_b;
+    boost::asio::io_service ios_c;
+
+    azmq::socket sb(ios_b, ZMQ_ROUTER);
+    sb.bind(subj(BOOST_CURRENT_FUNCTION));
+
+    azmq::socket sc(ios_c, ZMQ_DEALER);
+    sc.connect(subj(BOOST_CURRENT_FUNCTION));
+
+    std::future<size_t> btc = azmq::async_send(sc, snd_bufs, boost::asio::use_future);
+
+    std::array<char, 5> ident;
+    std::array<char, 2> a;
+    std::array<char, 2> b;
+
+    std::array<boost::asio::mutable_buffer, 3> rcv_bufs = {{
+                                                               boost::asio::buffer(ident),
+                                                               boost::asio::buffer(a),
+                                                               boost::asio::buffer(b)
+                                                           }};
+
+    std::future<size_t> btb = azmq::async_receive(sb, rcv_bufs, boost::asio::use_future);
+
+    ios_c.run();
+    ios_b.run();
+
+    REQUIRE(btc.get() == 4);
+    REQUIRE(btb.get() == 9);
+}
+
+TEST_CASE("Async Operation Send/Receive with stackful coroutine", "[socket_ops]") {
+    boost::asio::io_service ios;
+
+    azmq::socket sb(ios, ZMQ_ROUTER);
+    sb.bind(subj(BOOST_CURRENT_FUNCTION));
+
+    azmq::socket sc(ios, ZMQ_DEALER);
+    sc.connect(subj(BOOST_CURRENT_FUNCTION));
+
+    boost::optional<size_t> btc{};
+    boost::optional<size_t> btb{};
+
+    //send coroutine task
+    boost::asio::spawn(ios, [&](boost::asio::yield_context yield) {
+      btc = azmq::async_send(sc, snd_bufs, yield);
+    });
+
+    //receive coroutine task
+    boost::asio::spawn(ios, [&](boost::asio::yield_context yield) {
+      std::array<char, 5> ident;
+      std::array<char, 2> a;
+      std::array<char, 2> b;
+
+      std::array<boost::asio::mutable_buffer, 3> rcv_bufs = {{
+                                                                 boost::asio::buffer(ident),
+                                                                 boost::asio::buffer(a),
+                                                                 boost::asio::buffer(b)
+                                                             }};
+
+      btb = azmq::async_receive(sb, rcv_bufs, yield);
+    });
+
+    ios.run();
+    REQUIRE(btb.has_value());
+    REQUIRE(btb.value() == 9);
+
+    REQUIRE(btc.has_value());
+    REQUIRE(btc.value() == 4);
+}
+
+TEST_CASE("Async Operation Send/Receive single message, stackful coroutine, one message at a time", "[socket_ops]") {
+    boost::asio::io_service ios;
+
+    azmq::socket sb(ios, ZMQ_ROUTER);
+    sb.bind(subj(BOOST_CURRENT_FUNCTION));
+
+    azmq::socket sc(ios, ZMQ_DEALER);
+    sc.connect(subj(BOOST_CURRENT_FUNCTION));
+
+    //send coroutine task
+    boost::asio::spawn(ios, [&](boost::asio::yield_context yield) {
+      auto const btc = azmq::async_send(sc, snd_bufs, yield);
+      REQUIRE(btc == 4);
+    });
+
+    //receive coroutine task
+    boost::asio::spawn(ios, [&](boost::asio::yield_context yield) {
+      auto frame1 = azmq::message{};
+      auto const btb1 = azmq::async_receive(sb, frame1, yield);
+      REQUIRE(btb1 == 5);
+
+      auto frame2 = azmq::message{};
+      auto const btb2 = azmq::async_receive(sb, frame2, yield);
+      REQUIRE(btb2 == 2);
+
+      auto frame3 = azmq::message{};
+      auto const btb3 = azmq::async_receive(sb, frame3, yield);
+      REQUIRE(btb3 == 2);
+
+    });
+
+    ios.run();
+}
+
+#endif // BOOST_VERSION >= 107000
+
