@@ -615,7 +615,7 @@ TEST_CASE( "Socket Monitor", "[socket]" ) {
     t.join();
 
     {
-        int i = 0;
+        size_t i = 0;
         CHECK(client_monitor.events_.at(i++).e == ZMQ_EVENT_CONNECT_DELAYED);
         CHECK(client_monitor.events_.at(i++).e == ZMQ_EVENT_CONNECTED);
         #ifdef ZMQ_EVENT_HANDSHAKE_SUCCEEDED
@@ -626,7 +626,7 @@ TEST_CASE( "Socket Monitor", "[socket]" ) {
   }
 
   {
-      int i = 0;
+      size_t i = 0;
       CHECK(server_monitor.events_.at(i++).e == ZMQ_EVENT_LISTENING);
       CHECK(server_monitor.events_.at(i++).e == ZMQ_EVENT_ACCEPTED);
       #ifdef ZMQ_EVENT_HANDSHAKE_SUCCEEDED
