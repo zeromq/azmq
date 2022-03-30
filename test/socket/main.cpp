@@ -26,6 +26,10 @@
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
+static boost::string_ref message_ref(azmq::message const& msg) {
+    return {static_cast<const char*>(msg.data()), msg.size()};
+}
+
 std::array<boost::asio::const_buffer, 2> snd_bufs = {{
     boost::asio::buffer("A"),
     boost::asio::buffer("B")
@@ -74,6 +78,27 @@ TEST_CASE( "Send/Receive single buffer", "[socket]") {
 
     REQUIRE(sz1 == sz2);
     REQUIRE(boost::string_ref(msg) == boost::string_ref(buf.data()));
+}
+
+TEST_CASE( "Send/Receive single message", "[socket]") {
+    boost::asio::io_service ios;
+
+    azmq::socket sb(ios, ZMQ_PAIR);
+    sb.bind(subj(BOOST_CURRENT_FUNCTION));
+
+    azmq::socket sc(ios, ZMQ_PAIR);
+    sc.connect(subj(BOOST_CURRENT_FUNCTION));
+
+    auto msg = "TEST";
+    azmq::message snd_msg(msg);
+    auto sz1 = sc.send(snd_msg);
+    REQUIRE(boost::string_ref(msg) == message_ref(snd_msg));
+
+    azmq::message rec_msg;
+    auto sz2 = sb.receive(rec_msg);
+
+    REQUIRE(sz1 == sz2);
+    REQUIRE(boost::string_ref(msg) == message_ref(rec_msg));
 }
 
 TEST_CASE( "Send/Receive synchronous", "[socket]" ) {

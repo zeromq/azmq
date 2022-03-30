@@ -23,6 +23,7 @@
 #include <boost/system/error_code.hpp>
 
 #include <type_traits>
+#include <utility>
 
 namespace azmq {
 AZMQ_V1_INLINE_NAMESPACE_BEGIN
@@ -447,10 +448,10 @@ public:
      *  \param flags specifying how the send call is to be made
      *  \param ec set to indicate what, if any, error occurred
      */
-    std::size_t send(message const& msg,
+    std::size_t send(message msg,
                      flags_type flags,
                      boost::system::error_code & ec) {
-        return get_service().send(get_implementation(), msg, flags, ec);
+        return get_service().send(get_implementation(), std::move(msg), flags, ec);
     }
 
     /** \brief Send some data from the socket
@@ -458,10 +459,10 @@ public:
      *  \param flags specifying how the send call is to be made
      *  \return bytes transferred
      */
-    std::size_t send(message const& msg,
+    std::size_t send(message msg,
                      flags_type flags = 0) {
         boost::system::error_code ec;
-        auto res = get_service().send(get_implementation(), msg, flags, ec);
+        auto res = get_service().send(get_implementation(), std::move(msg), flags, ec);
         if (ec)
             throw boost::system::system_error(ec);
         return res;
