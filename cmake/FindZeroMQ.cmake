@@ -81,4 +81,11 @@ find_package_handle_standard_args(ZeroMQ FOUND_VAR ZeroMQ_FOUND
 if (ZeroMQ_FOUND)
     mark_as_advanced(ZeroMQ_INCLUDE_DIRS ZeroMQ_LIBRARIES ZeroMQ_VERSION
         ZeroMQ_VERSION_MAJOR ZeroMQ_VERSION_MINOR ZeroMQ_VERSION_PATCH)
+    if (NOT TARGET zeromq::zeromq)
+        add_library(zeromq::zeromq UNKNOWN IMPORTED)
+        set_target_properties(
+            zeromq::zeromq PROPERTIES
+            IMPORTED_LOCATION "${ZeroMQ_LIBRARIES}"
+            INTERFACE_INCLUDE_DIRECTORIES "${ZeroMQ_INCLUDE_DIRS}")
+    endif ()
 endif()

@@ -27,7 +27,7 @@ set(CPACK_RPM_PACKAGE_LICENSE           "Boost")
 set(CPACK_RPM_PACKAGE_NAME              "azmq-devel")
 set(CPACK_RPM_PACKAGE_REQUIRES          "zeromq-devel >= 4.0.0")
 
-configure_file("${azmq_SOURCE_DIR}/AzmqCPackOptions.cmake.in" "${azmq_BINARY_DIR}/AzmqCPackOptions.cmake" @ONLY)
+configure_file("${azmq_SOURCE_DIR}/cmake/AzmqCPackOptions.cmake.in" "${azmq_BINARY_DIR}/AzmqCPackOptions.cmake" @ONLY)
 set(CPACK_PROJECT_CONFIG_FILE "${azmq_BINARY_DIR}/AzmqCPackOptions.cmake")
 
 include(CPack)
