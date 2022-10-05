@@ -74,13 +74,15 @@ AZMQ_V1_INLINE_NAMESPACE_BEGIN
         }
 
         message(nocopy_t, boost::asio::const_buffer const& buffer)
-            : message(nocopy,
-                boost::asio::mutable_buffer(
-                    (void *)boost::asio::buffer_cast<const void*>(buffer),
-                    boost::asio::buffer_size(buffer)),
-                nullptr,
-                nullptr)
-        {}
+        {
+            auto rc = zmq_msg_init_data(&msg_,
+                                        const_cast<void *>(buffer.data()),
+                                        buffer.size(),
+                                        nullptr, nullptr);
+            if (rc)
+                throw boost::system::system_error(make_error_code());
+
+        }
 
         message(nocopy_t, boost::asio::mutable_buffer const& buffer, void* hint, zmq_free_fn* deleter)
         {
