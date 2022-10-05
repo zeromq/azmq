@@ -10,6 +10,7 @@
 #define AZMQ_DETAIL_SOCKET_SERVICE_HPP__
 #include "../error.hpp"
 #include "../message.hpp"
+#include "../package.hpp"
 #include "../option.hpp"
 #include "../util/scope_guard.hpp"
 #include "config/mutex.hpp"
@@ -93,7 +94,7 @@ namespace detail {
             void do_open(boost::asio::io_service & ios,
 #else
             void do_open(boost::asio::io_context & ios,
-#endif			 
+#endif
                          context_type & ctx,
                          int type,
                          bool optimize_single_threaded,
@@ -193,7 +194,7 @@ namespace detail {
 
         using core_access = azmq::detail::core_access<socket_service>;
 
-#ifdef AZMQ_DETAIL_USE_IO_SERVICE	  
+#ifdef AZMQ_DETAIL_USE_IO_SERVICE
         explicit socket_service(boost::asio::io_service & ios)
 #else
         explicit socket_service(boost::asio::io_service & ios)
@@ -399,46 +400,24 @@ namespace detail {
             return ec;
         }
 
-        template<typename ConstBufferSequence>
+	    template<typename T>
         size_t send(implementation_type & impl,
-                    ConstBufferSequence const& buffers,
+                    T const& msg,
                     flags_type flags,
                     boost::system::error_code & ec) {
             unique_lock l{ *impl };
             if (is_shutdown(impl, op_type::write_op, ec))
                 return 0;
-            auto r = socket_ops::send(buffers, impl->socket_, flags, ec);
-            check_missed_events(impl);
-            return r;
-        }
 
-        size_t send(implementation_type & impl,
-                    message const& msg,
-                    flags_type flags,
-                    boost::system::error_code & ec) {
-            unique_lock l{ *impl };
-            if (is_shutdown(impl, op_type::write_op, ec))
-                return 0;
             auto r = socket_ops::send(msg, impl->socket_, flags, ec);
             check_missed_events(impl);
+
             return r;
         }
 
-        template<typename MutableBufferSequence>
+        template<typename T>
         size_t receive(implementation_type & impl,
-                       MutableBufferSequence const& buffers,
-                       flags_type flags,
-                       boost::system::error_code & ec) {
-            unique_lock l{ *impl };
-            if (is_shutdown(impl, op_type::read_op, ec))
-                return 0;
-            auto r = socket_ops::receive(buffers, impl->socket_, flags, ec);
-            check_missed_events(impl);
-            return r;
-        }
-
-        size_t receive(implementation_type & impl,
-                       message & msg,
+                       T& msg,
                        flags_type flags,
                        boost::system::error_code & ec) {
             unique_lock l{ *impl };
@@ -473,7 +452,9 @@ namespace detail {
 
         template<typename T, typename... Args>
         void enqueue(implementation_type & impl, op_type o, Args&&... args) {
-            enqueue(impl, o, std::unique_ptr<T>(new T(std::forward<Args>(args)...)));
+	        std::unique_ptr<T> op = std::make_unique<T>(std::forward<Args>(args)...);
+
+            enqueue<T>(impl, o, std::move(op));
         }
 
         boost::system::error_code cancel(implementation_type & impl,
@@ -671,8 +652,12 @@ namespace detail {
 
         descriptor_map descriptors_;
 
-        void enqueue(implementation_type& impl, op_type o, reactor_op_ptr op) {
+
+        template<typename T>
+        void enqueue(implementation_type& impl, op_type o, std::unique_ptr<T> op) {
             unique_lock l{ *impl };
+
+
             boost::system::error_code ec;
             if (is_shutdown(impl, o, ec)) {
                 BOOST_ASSERT_MSG(op, "op ptr");
@@ -688,7 +673,7 @@ namespace detail {
                     if (op->do_perform(impl->socket_)) {
                         impl->in_speculative_completion_ = true;
                         l.unlock();
-#ifdef AZMQ_DETAIL_USE_IO_SERVICE			
+#ifdef AZMQ_DETAIL_USE_IO_SERVICE
                         get_io_service()
 #else
                         get_io_context()

@@ -13,6 +13,7 @@
 #include "option.hpp"
 #include "context.hpp"
 #include "message.hpp"
+#include "package.hpp"
 #include "detail/basic_io_object.hpp"
 #include "detail/send_op.hpp"
 #include "detail/receive_op.hpp"
@@ -354,7 +355,8 @@ public:
      *      message provided should be closed and rebuilt.  This is useful when
      *      reusing the same message instance across multiple receive operations.
      */
-    std::size_t receive(message & msg,
+    template<typename T>
+    std::size_t receive(T & msg,
                         flags_type flags,
                         boost::system::error_code & ec) {
         return get_service().receive(get_implementation(), msg, flags, ec);
@@ -371,10 +373,11 @@ public:
      *      message provided should be closed and rebuilt.  This is useful when
      *      reusing the same message instance across multiple receive operations.
      */
-    std::size_t receive(message & msg,
+    template<typename T>
+    std::size_t receive(T & msg,
                         flags_type flags = 0) {
         boost::system::error_code ec;
-        auto res = receive(msg, flags, ec);
+        auto res = receive<T>(msg, flags, ec);
         if (ec)
             throw boost::system::system_error(ec);
         return res;
@@ -408,62 +411,30 @@ public:
     }
 
     /** \brief Send some data from the socket
-     *  \tparam ConstBufferSequence
-     *  \param buffers buffer(s) to send
-     *  \param flags specifying how the send call is to be made
-     *  \param ec set to indicate what, if any, error occurred
-     *  \remark
-     *  If buffers is a sequence of buffers this call will send a multipart
-     *  message from the supplied buffer sequence.
-     */
-    template<typename ConstBufferSequence>
-    std::size_t send(ConstBufferSequence const& buffers,
-                     flags_type flags,
-                     boost::system::error_code & ec) {
-        return get_service().send(get_implementation(), buffers, flags, ec);
-    }
-
-    /** \brief Send some data to the socket
-     *  \tparam ConstBufferSequence
-     *  \param buffers buffer(s) to send
-     *  \param flags specifying how the send call is to be made
-     *  \throw boost::system::system_error
-     *  \remark
-     *  If buffers is a sequence of buffers this call will send a multipart
-     *  message from the supplied buffer sequence.
-     */
-    template<typename ConstBufferSequence>
-    std::size_t send(ConstBufferSequence const& buffers,
-                     flags_type flags = 0) {
-        boost::system::error_code ec;
-        auto res = send(buffers, flags, ec);
-        if (ec)
-            throw boost::system::system_error(ec);
-        return res;
-    }
-
-    /** \brief Send some data from the socket
-     *  \param msg raw_message to send
+     *  \param msg container with data to send
      *  \param flags specifying how the send call is to be made
      *  \param ec set to indicate what, if any, error occurred
      */
-    std::size_t send(message const& msg,
+    template<typename T>
+    std::size_t send(T const& msg,
                      flags_type flags,
                      boost::system::error_code & ec) {
         return get_service().send(get_implementation(), msg, flags, ec);
     }
 
     /** \brief Send some data from the socket
-     *  \param msg raw_message to send
+     *  \param msg container with data to send
      *  \param flags specifying how the send call is to be made
      *  \return bytes transferred
      */
-    std::size_t send(message const& msg,
+    template<typename T>
+    std::size_t send(T const& msg,
                      flags_type flags = 0) {
         boost::system::error_code ec;
         auto res = get_service().send(get_implementation(), msg, flags, ec);
         if (ec)
             throw boost::system::system_error(ec);
+
         return res;
     }
 
@@ -513,6 +484,32 @@ public:
                                     buffers, std::forward<ReadHandler>(handler), flags);
     }
 
+    /** \brief Initate an async receive operation
+     *  \tparam MessageReadHandler must conform to the MessageReadHandler concept
+     *  \param handler ReadHandler
+     *  \param flags int flags
+     *  \remark
+     *  The MessageReadHandler concept has the following interface
+     *  struct MessageReadHandler {
+     *      void operator()(const boost::system::error_code & ec,
+     *                      message & msg,
+     *                      size_t bytes_transferred);
+     *  }
+     *  \remark
+     *  Multipart messages can be handled by checking the status of more() on the
+     *  supplied message, and calling synchronous receive() to retrieve subsequent
+     *  message parts. If a handler wishes to retain the supplied message after the
+     *  MessageReadHandler returns, it must make an explicit copy or move of
+     *  the message.
+     */
+    template<typename T, typename MessageReadHandler>
+    void async_receive(MessageReadHandler && handler,
+                       flags_type flags = 0) {
+        using type = detail::receive_op<T, MessageReadHandler>;
+        get_service().enqueue<type>(get_implementation(), detail::socket_service::op_type::read_op,
+                                    std::forward<MessageReadHandler>(handler), flags);
+    }
+
     /** \brief Initiate an async receive operation.
      *  \tparam MutableBufferSequence
      *  \tparam ReadMoreHandler must conform to the ReadMoreHandler concept
@@ -542,31 +539,6 @@ public:
                                     buffers, std::forward<ReadMoreHandler>(handler), flags);
     }
 
-    /** \brief Initate an async receive operation
-     *  \tparam MessageReadHandler must conform to the MessageReadHandler concept
-     *  \param handler ReadHandler
-     *  \param flags int flags
-     *  \remark
-     *  The MessageReadHandler concept has the following interface
-     *  struct MessageReadHandler {
-     *      void operator()(const boost::system::error_code & ec,
-     *                      message & msg,
-     *                      size_t bytes_transferred);
-     *  }
-     *  \remark
-     *  Multipart messages can be handled by checking the status of more() on the
-     *  supplied message, and calling synchronous receive() to retrieve subsequent
-     *  message parts. If a handler wishes to retain the supplied message after the
-     *  MessageReadHandler returns, it must make an explicit copy or move of
-     *  the message.
-     */
-    template<typename MessageReadHandler>
-    void async_receive(MessageReadHandler && handler,
-                       flags_type flags = 0) {
-        using type = detail::receive_op<MessageReadHandler>;
-        get_service().enqueue<type>(get_implementation(), detail::socket_service::op_type::read_op,
-                                    std::forward<MessageReadHandler>(handler), flags);
-    }
 
     /** \brief Initiate an async send operation
      *  \tparam ConstBufferSequence must conform to the asio

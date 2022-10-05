@@ -86,10 +86,13 @@ private:
     Handler handler_;
 };
 
-class receive_op_base : public reactor_op {
+template<typename T, typename Handler>
+class receive_op : public reactor_op {
 public:
-    receive_op_base(socket_ops::flags_type flags)
+    receive_op(Handler handler,
+               socket_ops::flags_type flags)
         : flags_(flags)
+        , handler_(std::move(handler))
         { }
 
     virtual bool do_perform(socket_type& socket) override {
@@ -100,27 +103,16 @@ public:
         return true;
     }
 
-protected:
-    message msg_;
-    flags_type flags_;
-};
-
-template<typename Handler>
-class receive_op : public receive_op_base {
-public:
-    receive_op(Handler handler,
-               socket_ops::flags_type flags)
-        : receive_op_base(flags)
-        , handler_(std::move(handler))
-        { }
-
     virtual void do_complete() override {
-        handler_(ec_, msg_, bytes_transferred_);
+        handler_(this->ec_, this->msg_, this->bytes_transferred_);
     }
 
 private:
+    flags_type flags_;
     Handler handler_;
+    T msg_;
 };
+
 } // namespace detail
 } // namespace azmq
 #endif // AZMQ_DETAIL_RECEIVE_OP_HPP_
