@@ -196,3 +196,30 @@ TEST_CASE( "Inproc Send/Receive not enough buffers", "[socket_ops]" ) {
     azmq::detail::socket_ops::receive(rcv_msg_seq_2, sb, 0, ec);
     REQUIRE(ec != boost::system::error_code());
 }
+
+TEST_CASE( "Inproc Send/Receive package", "[socket_ops]" ) {
+    boost::system::error_code ec;
+    auto sb = azmq::detail::socket_ops::create_socket(ctx, ZMQ_ROUTER, ec);
+    REQUIRE(ec == boost::system::error_code());
+    auto uri = subj(BOOST_CURRENT_FUNCTION);
+    azmq::detail::socket_ops::bind(sb, uri, ec);
+    REQUIRE(ec == boost::system::error_code());
+
+    auto sc = azmq::detail::socket_ops::create_socket(ctx, ZMQ_DEALER, ec);
+    REQUIRE(ec == boost::system::error_code());
+    azmq::detail::socket_ops::connect(sc, uri, ec);
+    REQUIRE(ec == boost::system::error_code());
+
+    azmq::package pkg1;
+    pkg1 << "TEST";
+    auto sz1 = azmq::detail::socket_ops::send(pkg1, sc, 0, ec);
+    REQUIRE(ec == boost::system::error_code());
+    REQUIRE(sz1 == 4);
+
+    azmq::package pkg2;
+    auto sz2 = azmq::detail::socket_ops::receive(pkg2, sb, 0, ec);
+    REQUIRE(ec == boost::system::error_code());
+    REQUIRE(pkg2.messages_count() == 2);
+    REQUIRE(sz2 == 9);
+    REQUIRE(sz2 == pkg2.size());
+}

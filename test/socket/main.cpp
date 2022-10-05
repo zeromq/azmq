@@ -115,6 +115,65 @@ TEST_CASE( "Send/Receive synchronous", "[socket]" ) {
     REQUIRE(size == 9);
 }
 
+TEST_CASE( "Send/Receive package synchronous", "[socket]" ) {
+    boost::asio::io_service ios;
+
+    azmq::socket sb(ios, ZMQ_ROUTER);
+    sb.bind(subj(BOOST_CURRENT_FUNCTION));
+
+    azmq::socket sc(ios, ZMQ_DEALER);
+    sc.connect(subj(BOOST_CURRENT_FUNCTION));
+
+    azmq::package pkg1;
+    pkg1 << "TEST";
+
+    auto sz1 = sc.send(pkg1);
+    REQUIRE(sz1 == 4);
+
+    azmq::package pkg2;
+    auto sz2 = sb.receive(pkg2);
+    REQUIRE(sz2 == 9);
+    REQUIRE(pkg2.messages_count() == 2);
+    REQUIRE(pkg2.size() == 9);
+}
+
+TEST_CASE( "Send/Receive package async", "[socket_ops]" ) {
+    boost::asio::io_service ios_b;
+    boost::asio::io_service ios_c;
+
+    azmq::socket sb(ios_b, ZMQ_ROUTER);
+    sb.bind(subj(BOOST_CURRENT_FUNCTION));
+
+    azmq::socket sc(ios_c, ZMQ_DEALER);
+    sc.connect(subj(BOOST_CURRENT_FUNCTION));
+
+    azmq::package pkg1;
+    pkg1 << "TEST";
+    boost::system::error_code ecc;
+    size_t btc = 0;
+    sc.async_send(pkg1, [&] (boost::system::error_code const& ec, size_t bytes_transferred) {
+        SCOPE_EXIT { ios_c.stop(); };
+        ecc = ec;
+        btc = bytes_transferred;
+    });
+
+    boost::system::error_code ecb;
+    size_t btb = 0;
+    sb.async_receive<azmq::package>([&](boost::system::error_code const& ec, azmq::package &pkg, size_t bytes_transferred) {
+        SCOPE_EXIT { ios_b.stop(); };
+        ecb = ec;
+        btb = bytes_transferred;
+    });
+
+    ios_c.run();
+    ios_b.run();
+
+    REQUIRE(ecc == boost::system::error_code());
+    REQUIRE(btc == 4);
+    REQUIRE(ecb == boost::system::error_code());
+    REQUIRE(btb == 9);
+}
+
 TEST_CASE( "Send/Receive async", "[socket_ops]" ) {
     boost::asio::io_service ios_b;
     boost::asio::io_service ios_c;
@@ -394,7 +453,7 @@ TEST_CASE( "Send/Receive message async", "[socket]" ) {
 
     boost::system::error_code ecb;
     size_t btb = 0;
-    sb.async_receive([&](boost::system::error_code const& ec, azmq::message & msg, size_t bytes_transferred) {
+    sb.async_receive<azmq::message>([&](boost::system::error_code const& ec, azmq::message & msg, size_t bytes_transferred) {
         SCOPE_EXIT { ios_b.stop(); };
         ecb = ec;
         if (ecb)
@@ -455,7 +514,7 @@ TEST_CASE( "Send/Receive message more async", "[socket]" ) {
 
     boost::system::error_code ecb;
     size_t btb = 0;
-    sb.async_receive([&](boost::system::error_code const& ec, azmq::message & msg, size_t bytes_transferred) {
+    sb.async_receive<azmq::message>([&](boost::system::error_code const& ec, azmq::message & msg, size_t bytes_transferred) {
         SCOPE_EXIT { ios_b.stop(); };
         ecb = ec;
         if (ecb)
@@ -513,7 +572,7 @@ struct monitor_handler {
 
     void start()
     {
-        socket_.async_receive([this](boost::system::error_code const& ec,
+        socket_.async_receive<azmq::message>([this](boost::system::error_code const& ec,
                                      azmq::message & msg, size_t) {
                 if (ec)
                     return;
@@ -702,7 +761,7 @@ TEST_CASE( "socket_service does not call pending completion handlers when destro
     boost::asio::io_service ioservice;
     azmq::socket socket(ioservice, ZMQ_ROUTER);
     socket.bind(subj(BOOST_CURRENT_FUNCTION));
-    socket.async_receive([](boost::system::error_code const& ec, azmq::message & msg, size_t bytes_transferred) {
+    socket.async_receive<azmq::message>([](boost::system::error_code const& ec, azmq::message & msg, size_t bytes_transferred) {
         FAIL();
     });
 }
