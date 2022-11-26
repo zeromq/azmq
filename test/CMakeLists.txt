@@ -1,3 +1,11 @@
+cmake_minimum_required(VERSION 3.16...3.25)
+project(test_azmq LANGUAGES CXX)
+
+if (TEST_INSTALLED_VERSION)
+    find_package(azmq 1.1 REQUIRED)
+    enable_testing()
+endif ()
+
 find_package(Catch2)
 if ( NOT Catch2 )
     Include(FetchContent)
@@ -23,4 +31,3 @@ add_subdirectory(socket_ops)
 add_subdirectory(socket)
 add_subdirectory(signal)
 add_subdirectory(actor)
-
