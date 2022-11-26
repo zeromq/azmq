@@ -251,12 +251,12 @@ namespace detail {
             return false;
         }
 
-        static size_t send(message const& msg,
+        static size_t send(message msg,
                            socket_type & socket,
                            flags_type flags,
                            boost::system::error_code & ec) {
             BOOST_ASSERT_MSG(socket, "Invalid socket");
-            auto rc = zmq_msg_send(const_cast<zmq_msg_t*>(&msg.msg_), socket.get(), flags);
+            auto rc = zmq_msg_send(&msg.msg_, socket.get(), flags);
             if (rc < 0) {
                 ec = make_error_code();
                 return 0;
@@ -288,7 +288,7 @@ namespace detail {
                               flags_type flags,
                               boost::system::error_code & ec) {
             BOOST_ASSERT_MSG(socket, "Invalid socket");
-            auto rc = zmq_msg_recv(const_cast<zmq_msg_t*>(&msg.msg_), socket.get(), flags);
+            auto rc = zmq_msg_recv(&msg.msg_, socket.get(), flags);
             if (rc < 0) {
                 ec = make_error_code();
                 return 0;

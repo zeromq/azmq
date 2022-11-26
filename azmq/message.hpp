@@ -154,16 +154,16 @@ AZMQ_V1_INLINE_NAMESPACE_BEGIN
         }
 
         message(message const& rhs) {
-            auto rc = zmq_msg_init(const_cast<zmq_msg_t*>(&msg_));
+            auto rc = zmq_msg_init(&msg_);
             BOOST_ASSERT_MSG(rc == 0, "zmq_msg_init return non-zero");
-            rc = zmq_msg_copy(const_cast<zmq_msg_t*>(&msg_),
+            rc = zmq_msg_copy(&msg_,
                               const_cast<zmq_msg_t*>(&rhs.msg_));
             if (rc)
                 throw boost::system::system_error(make_error_code());
         }
 
         message& operator=(message const& rhs) {
-            auto rc = zmq_msg_copy(const_cast<zmq_msg_t*>(&msg_),
+            auto rc = zmq_msg_copy(&msg_,
                                    const_cast<zmq_msg_t*>(&rhs.msg_));
             if (rc)
                 throw boost::system::system_error(make_error_code());
@@ -283,7 +283,7 @@ AZMQ_V1_INLINE_NAMESPACE_BEGIN
             if (rc)
                 throw boost::system::system_error(make_error_code());
 
-            auto pdst = zmq_msg_data(const_cast<zmq_msg_t*>(&msg_));
+            auto pdst = zmq_msg_data(&msg_);
             auto psrc = zmq_msg_data(&tmp);
             ::memcpy(pdst, psrc, sz);
         }
