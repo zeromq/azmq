@@ -8,7 +8,7 @@ if (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
 endif ()
 
 # -- options
-option(BUILD_TESTING "run unit tests" ${CMAKE_MASTER_PROJECT})
+option(AZMQ_BUILD_TESTS "run unit tests" ${CMAKE_MASTER_PROJECT})
 option(BUILD_SHARED_LIBS "use the libzmq static or shared" yes)
 option(MORE_WARNINGS "More warnings" ${CMAKE_MASTER_PROJECT})
 option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" no)
@@ -23,7 +23,6 @@ if (CMAKE_SKIP_INSTALL_RULES)
     endif ()
 
     add_library(project_options INTERFACE)
-    # XXX target_compile_features(project_options INTERFACE)
     include(cmake/Sanitizers.cmake)
     enable_sanitizers(project_options)
 endif ()
@@ -50,6 +49,7 @@ find_package(Threads REQUIRED)
 
 # --- create library --
 add_library(${PROJECT_NAME} INTERFACE)
+add_library(Azmq::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 target_link_libraries(${PROJECT_NAME} INTERFACE Azmq::libzmq Boost::boost ${CMAKE_THREAD_LIBS_INIT})
 
@@ -75,17 +75,15 @@ if (CMAKE_MASTER_PROJECT AND NOT CMAKE_SKIP_INSTALL_RULES)
     install(TARGETS ${PROJECT_NAME} EXPORT ${PROJECT_NAME}Targets RUNTIME DESTINATION bin ARCHIVE DESTINATION lib)
     configure_file(${PROJECT_NAME}Config.cmake "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake" COPYONLY)
     set(ConfigPackageLocation lib/cmake/${PROJECT_NAME})
-    install(EXPORT ${PROJECT_NAME}Targets DESTINATION ${ConfigPackageLocation})
+    install(EXPORT ${PROJECT_NAME}Targets NAMESPACE Azmq:: DESTINATION ${ConfigPackageLocation})
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
                   ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake DESTINATION ${ConfigPackageLocation})
 
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/FindAzmqLibzmq.cmake" DESTINATION ${ConfigPackageLocation})
 endif ()
 
-if (BUILD_TESTING)
+if (AZMQ_BUILD_TESTS)
     enable_testing()
-endif()
-
     message(STATUS "Building Tests. Be sure to check out test/constexpr_tests for constexpr testing")
     add_subdirectory(test)
 endif ()

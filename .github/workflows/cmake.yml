@@ -5,7 +5,7 @@ on:
     branches:
       - '**'
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
   build:
@@ -50,8 +50,7 @@ jobs:
             cxx: "clang++",
           }
           - {
-            name: "macos stock",
-            os: macos-11,
+            os: macos-12,
             boost_url: system,
             zmq_tag: system,
             system_packages: "zmq boost",
@@ -97,4 +96,3 @@ jobs:
         run: |
           cmake  -DBOOST_URL=${{matrix.config.boost_url}} -DZMQ_TAG=${{matrix.config.zmq_tag}} -S .github/workflows/cmake-superbuild  -B build
           cmake --build build
-
