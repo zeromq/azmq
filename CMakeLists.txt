@@ -10,7 +10,7 @@ endif ()
 # -- options
 option(AZMQ_BUILD_TESTS "run unit tests" ${CMAKE_MASTER_PROJECT})
 option(BUILD_SHARED_LIBS "use the libzmq static or shared" yes)
-option(AZMQ_DEVELOPER "Add verbose warning for developers " no)
+option(AZMQ_DEVELOPER "Add verbose warning for developers " ${CMAKE_MASTER_PROJECT})
 
 # -- config settings --
 set(CMAKE_CXX_STANDARD 11)
@@ -41,9 +41,9 @@ target_include_directories(${PROJECT_NAME} INTERFACE "$<BUILD_INTERFACE:${CMAKE_
                                                      "$<INSTALL_INTERFACE:include>")
 
 if (AZMQ_DEVELOPER)
-  include(cmake/CompilerWarnings.cmake)
-  add_more_warnings_to(${PROJECT_NAME})
-endif()
+    include(cmake/CompilerWarnings.cmake)
+    add_more_warnings_to(${PROJECT_NAME})
+endif ()
 
 if (CMAKE_MASTER_PROJECT AND NOT CMAKE_SKIP_INSTALL_RULES)
     include(AzmqCPack.cmake)

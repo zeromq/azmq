@@ -70,5 +70,6 @@ function(add_more_warnings_to project)
     message(AUTHOR_WARNING "No compiler warnings set for '${CMAKE_CXX_COMPILER_ID}' compiler.")
   endif()
 
-  target_compile_options(${project} INTERFACE ${PROJECT_WARNINGS})
+  # XXX NO! target_compile_options(${project} INTERFACE ${PROJECT_WARNINGS})
+  add_compile_options(${PROJECT_WARNINGS})
 endfunction()
