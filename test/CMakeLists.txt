@@ -25,6 +25,7 @@ macro(add_catch_test name)
     catch_discover_tests(${name})
 endmacro()
 
+
 add_subdirectory(message)
 add_subdirectory(context_ops)
 add_subdirectory(socket_ops)

@@ -10,22 +10,7 @@ endif ()
 # -- options
 option(AZMQ_BUILD_TESTS "run unit tests" ${CMAKE_MASTER_PROJECT})
 option(BUILD_SHARED_LIBS "use the libzmq static or shared" yes)
-option(MORE_WARNINGS "More warnings" ${CMAKE_MASTER_PROJECT})
-option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" no)
-
-# -- warning and errors template from from
-# https://github.com/cpp-best-practices/cpp_starter_project/tree/main/cmake
-if (CMAKE_SKIP_INSTALL_RULES)
-    add_library(project_warnings INTERFACE)
-    if (MORE_WARNINGS)
-        include(cmake/CompilerWarnings.cmake)
-        set_project_warnings(project_warnings)
-    endif ()
-
-    add_library(project_options INTERFACE)
-    include(cmake/Sanitizers.cmake)
-    enable_sanitizers(project_options)
-endif ()
+option(AZMQ_DEVELOPER "Add verbose warning for developers " no)
 
 # -- config settings --
 set(CMAKE_CXX_STANDARD 11)
@@ -52,13 +37,13 @@ add_library(${PROJECT_NAME} INTERFACE)
 add_library(Azmq::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 target_link_libraries(${PROJECT_NAME} INTERFACE Azmq::libzmq Boost::boost ${CMAKE_THREAD_LIBS_INIT})
-
-if (CMAKE_SKIP_INSTALL_RULES)
-    target_link_libraries(${PROJECT_NAME} INTERFACE project_options project_warnings)
-endif ()
-
 target_include_directories(${PROJECT_NAME} INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
                                                      "$<INSTALL_INTERFACE:include>")
+
+if (AZMQ_DEVELOPER)
+  include(cmake/CompilerWarnings.cmake)
+  add_more_warnings_to(${PROJECT_NAME})
+endif()
 
 if (CMAKE_MASTER_PROJECT AND NOT CMAKE_SKIP_INSTALL_RULES)
     include(AzmqCPack.cmake)
