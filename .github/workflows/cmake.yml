@@ -14,11 +14,11 @@ jobs:
       matrix:
         config:
           - {
-            name: "ubuntu latest",
-            os: ubuntu-20.04,
-            boost_url: BOOST_177,
-            zmq_tag: "v4.3.4",
-            system_packages: "",
+            name: "ubuntu22",
+            os: ubuntu-22.04,
+            boost_url: system,
+            zmq_tag: system,
+            system_packages: "libboost-all-dev libzmq3-dev ",
             cc: "gcc",
             cxx: "g++",
           }
@@ -32,24 +32,7 @@ jobs:
             cxx: "g++",
           }
           - {
-            name: "ubuntu oldest",
-            os: ubuntu-18.04,
-            boost_url: BOOST_168,
-            zmq_tag: "v4.3.0",
-            system_packages: "",
-            cc: "clang",
-            cxx: "clang++",
-          }
-          - {
-            name: "macos latest ",
-            os: macos-11,
-            boost_url: BOOST_177,
-            zmq_tag: "v4.3.2",
-            system_packages: "",
-            cc: "clang",
-            cxx: "clang++",
-          }
-          - {
+            name: "macos12 ",
             os: macos-12,
             boost_url: system,
             zmq_tag: system,
@@ -58,11 +41,11 @@ jobs:
             cxx: "clang++",
           }
           - {
-            name: "macos oldest",
-            os: macos-10.15,
-            boost_url: BOOST_172,
-            zmq_tag: "v4.3.0",
-            system_packages: "",
+            name: "macos11 ",
+            os: macos-11,
+            boost_url: system,
+            zmq_tag: system,
+            system_packages: "zmq boost",
             cc: "clang",
             cxx: "clang++",
           }
