@@ -15,7 +15,7 @@ set(CPACK_PACKAGE_VERSION               "1.1.0")
 
 # Debian-specific packaging
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE   "all")
-set(CPACK_DEBIAN_PACKAGE_DEPENDS        "libzmq3-dev (>= 4.0.0), libboost-dev (>= 1.48.0)")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS        "libzmq3-dev (>= 4.0.0), libboost-dev (>= 1.68.0)")
 set(CPACK_DEBIAN_PACKAGE_NAME           "libazmq-dev")
 set(CPACK_DEBIAN_PACKAGE_SECTION        "libdevel")
 

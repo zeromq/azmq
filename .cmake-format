@@ -1,0 +1,16 @@
+format:
+  line_width: 123
+  tab_size: 4
+  max_subgroups_hwrap: 4
+  max_pargs_hwrap: 4
+  max_rows_cmdline: 8
+  separate_ctrl_name_with_space: true
+  separate_fn_name_with_space: false
+  dangle_parens: false
+  min_prefix_chars: 8
+  max_lines_hwrap: 3
+  line_ending: unix
+markup:
+  bullet_char: '*'
+  enum_char: .
+  enable_markup: false
