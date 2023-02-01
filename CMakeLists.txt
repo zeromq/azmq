@@ -11,6 +11,7 @@ endif ()
 option(AZMQ_BUILD_TESTS "run unit tests" ${CMAKE_MASTER_PROJECT})
 option(BUILD_SHARED_LIBS "use the libzmq static or shared" yes)
 option(AZMQ_DEVELOPER "Add verbose warning for developers " ${CMAKE_MASTER_PROJECT})
+option(AZMQ_BUILD_DOC "Add documentation example" ${CMAKE_MASTER_PROJECT})
 
 # -- config settings --
 set(CMAKE_CXX_STANDARD 11)
@@ -73,4 +74,6 @@ if (AZMQ_BUILD_TESTS)
     add_subdirectory(test)
 endif ()
 
-add_subdirectory(doc)
+if (AZMQ_BUILD_DOC)
+  add_subdirectory(doc)
+endif()
