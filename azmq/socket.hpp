@@ -22,6 +22,10 @@
 #include <boost/asio/buffer.hpp>
 #include <boost/system/error_code.hpp>
 
+#if BOOST_VERSION >= 106600
+#include <boost/asio/bind_executor.hpp>
+#endif
+
 #include <type_traits>
 #include <utility>
 
@@ -685,6 +689,85 @@ public:
         return stm;
     }
 };
+
+#if BOOST_VERSION >= 107000
+/**
+ *  \brief Support async methods using completion tokens
+ */
+
+template<typename ConstBufferSequence>
+struct async_send_initiation {
+  azmq::socket &socket;
+  ConstBufferSequence const &buffers;
+
+  template<typename CompletionHandler>
+  void operator()(CompletionHandler &&completion_handler) {
+      auto executor = boost::asio::get_associated_executor(
+          completion_handler, socket.get_executor());
+      socket.async_send(buffers, boost::asio::bind_executor(executor,
+                                          std::bind(std::forward<CompletionHandler>(completion_handler), std::placeholders::_1, std::placeholders::_2)));
+  }
+};
+
+template<typename MutableBufferSequence>
+struct async_receive_initiation {
+  azmq::socket &socket;
+  MutableBufferSequence const &buffers;
+
+  template<typename CompletionHandler>
+  void operator()(CompletionHandler &&completion_handler) {
+      auto executor = boost::asio::get_associated_executor(
+          completion_handler, socket.get_executor());
+      socket.async_receive(buffers, boost::asio::bind_executor(executor,
+                                                            std::bind(std::forward<CompletionHandler>(completion_handler), std::placeholders::_1, std::placeholders::_2)));
+  }
+};
+
+template<typename MutableBufferSequence>
+struct async_receive_more_initiation {
+  azmq::socket &socket;
+  MutableBufferSequence const &buffers;
+
+  template<typename CompletionHandler>
+  void operator()(CompletionHandler &&completion_handler) {
+      auto executor = boost::asio::get_associated_executor(
+          completion_handler, socket.get_executor());
+      socket.async_receive_more(buffers, boost::asio::bind_executor(executor,
+                                                               std::bind(std::forward<CompletionHandler>(completion_handler), std::placeholders::_1, std::placeholders::_2)));
+  }
+};
+
+template<class CompletionToken, class ConstBufferSequence>
+auto async_send(azmq::socket &socket, ConstBufferSequence const &buffers,
+                CompletionToken &&token)
+-> BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken,
+                                 void(boost::system::error_code, size_t)) {
+
+    return boost::asio::async_initiate<CompletionToken, void(boost::system::error_code, size_t)>(
+        async_send_initiation<ConstBufferSequence>{socket, buffers}, token);
+}
+
+template<class CompletionToken, class MutableBufferSequence>
+auto async_receive(azmq::socket &socket, MutableBufferSequence const &buffers,
+                   CompletionToken &&token)
+-> BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken,
+                                 void(boost::system::error_code, size_t)) {
+
+    return boost::asio::async_initiate<CompletionToken, void(boost::system::error_code, size_t)>(
+        async_receive_initiation<MutableBufferSequence>{socket, buffers}, token);
+}
+
+template<class CompletionToken, class MutableBufferSequence>
+auto async_receive_more(azmq::socket &socket, MutableBufferSequence &buffers,
+                        CompletionToken &&token)
+-> BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken,
+                                 void(boost::system::error_code, size_t)) {
+
+    return boost::asio::async_initiate<CompletionToken, void(boost::system::error_code, size_t)>(
+        async_receive_more_initiation<MutableBufferSequence>{socket, buffers}, token);
+}
+#endif
+
 AZMQ_V1_INLINE_NAMESPACE_END
 
 namespace detail {
@@ -833,4 +916,3 @@ void attach(socket & s, Range r, bool serverish = true) {
 AZMQ_V1_INLINE_NAMESPACE_END
 } // namespace azmq
 #endif // AZMQ_SOCKET_HPP_
-
