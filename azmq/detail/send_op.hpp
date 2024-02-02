@@ -14,6 +14,8 @@
 #include "reactor_op.hpp"
 
 #include <boost/asio/io_service.hpp>
+#include <boost/asio/executor_work_guard.hpp>
+#include <boost/asio/dispatch.hpp>
 
 #include <zmq.h>
 #include <iterator>
@@ -55,7 +57,10 @@ public:
     { }
 
     virtual void do_complete() override {
-        handler_(this->ec_, this->bytes_transferred_);
+        auto work = boost::asio::make_work_guard(handler_);
+        boost::asio::dispatch(work.get_executor(), [ec_ = this->ec_, handler_ = std::move(handler_), bytes_transferred_ = this->bytes_transferred_]() mutable {
+            handler_(ec_, bytes_transferred_);
+        });
     }
 
 private:
@@ -93,7 +98,10 @@ public:
     { }
 
     virtual void do_complete() override {
-        handler_(ec_, bytes_transferred_);
+        auto work = boost::asio::make_work_guard(handler_);
+        boost::asio::dispatch(work.get_executor(), [ec_ = this->ec_, handler_ = std::move(handler_), bytes_transferred_ = this->bytes_transferred_]() mutable {
+            handler_(ec_, bytes_transferred_);
+        });
     }
 
 private:

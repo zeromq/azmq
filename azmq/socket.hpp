@@ -761,7 +761,7 @@ template<class CompletionToken, class MutableBufferSequence>
 auto async_receive_more(azmq::socket &socket, MutableBufferSequence &buffers,
                         CompletionToken &&token)
 -> BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken,
-                                 void(boost::system::error_code, size_t)) {
+                                 void(boost::system::error_code, azmq::socket::more_result_type)) {
 
     return boost::asio::async_initiate<CompletionToken, void(boost::system::error_code, size_t)>(
         async_receive_more_initiation<MutableBufferSequence>{socket, buffers}, token);
