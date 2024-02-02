@@ -18,6 +18,9 @@
 #include <boost/asio/use_future.hpp>
 #include <boost/asio/spawn.hpp>
 #include <boost/optional.hpp>
+#if BOOST_VERSION >= 107400
+#include <boost/asio/any_io_executor.hpp>
+#endif
 #endif
 
 #include <array>
@@ -896,7 +899,7 @@ TEST_CASE("Async Operation Send/Receive single message, stackful coroutine, one 
 
 TEST_CASE("Async Operation Send/Receive single message, check thread safety", "[socket_ops]") {
 	boost::asio::io_service ios;
-#if BOOST_VERSION > 107700
+#if BOOST_VERSION > 107400
 	boost::asio::strand<boost::asio::any_io_executor> strand{ios.get_executor()};
 #else
 	boost::asio::strand<boost::asio::executor> strand{ios.get_executor()};
