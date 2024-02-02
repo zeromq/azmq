@@ -893,5 +893,58 @@ TEST_CASE("Async Operation Send/Receive single message, stackful coroutine, one 
     ios.run();
 }
 
+
+TEST_CASE("Async Operation Send/Receive single message, check thread safety", "[socket_ops]") {
+	boost::asio::io_service ios;
+#if BOOST_VERSION > 107700
+	boost::asio::strand<boost::asio::any_io_executor> strand{ios.get_executor()};
+#else
+	boost::asio::strand<boost::asio::executor> strand{ios.get_executor()};
+#endif
+
+	azmq::socket sb(ios, ZMQ_ROUTER);
+	sb.bind(subj(BOOST_CURRENT_FUNCTION));
+
+	azmq::socket sc(ios, ZMQ_DEALER);
+	sc.connect(subj(BOOST_CURRENT_FUNCTION));
+
+	//send coroutine task
+	boost::asio::spawn(strand, [&](boost::asio::yield_context yield) {
+		ASSERT_TRUE(strand.running_in_this_thread());
+		auto const btc = azmq::async_send(sc, snd_bufs, yield);
+		ASSERT_TRUE(strand.running_in_this_thread());
+		ASSERT_TRUE(btc == 4);
+	});
+
+	//receive coroutine task
+	boost::asio::spawn(strand, [&](boost::asio::yield_context yield) {
+		std::array<char, 5> ident;
+		std::array<char, 2> a;
+		std::array<char, 2> b;
+
+		boost::system::error_code ecc;
+
+		ASSERT_TRUE(strand.running_in_this_thread());
+		auto const btb1 = azmq::async_receive(sb, boost::asio::buffer(ident), yield[ecc]);
+		ASSERT_TRUE(strand.running_in_this_thread());
+		ASSERT_TRUE(ecc);
+		ASSERT_TRUE(btb1 == 5);
+
+		auto const btb2 = azmq::async_receive(sb, boost::asio::buffer(a), yield[ecc]);
+		ASSERT_TRUE(strand.running_in_this_thread());
+		ASSERT_TRUE(ecc);
+		ASSERT_TRUE(btb2 == 2);
+		ASSERT_TRUE(message_ref(snd_bufs.at(0)) == boost::string_ref(a.data(), 2));
+
+		auto const btb3 = azmq::async_receive(sb, boost::asio::buffer(b), yield[ecc]);
+		ASSERT_TRUE(strand.running_in_this_thread());
+		ASSERT_TRUE(ecc);
+		ASSERT_TRUE(btb3 == 2);
+		ASSERT_TRUE(message_ref(snd_bufs.at(1)) == boost::string_ref(b.data(), 2));
+	});
+
+	ios.run();
+}
+
 #endif // BOOST_VERSION >= 107000
 
