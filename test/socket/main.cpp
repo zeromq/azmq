@@ -910,10 +910,10 @@ TEST_CASE("Async Operation Send/Receive single message, check thread safety", "[
 
 	//send coroutine task
 	boost::asio::spawn(strand, [&](boost::asio::yield_context yield) {
-		ASSERT_TRUE(strand.running_in_this_thread());
+		REQUIRE(strand.running_in_this_thread());
 		auto const btc = azmq::async_send(sc, snd_bufs, yield);
-		ASSERT_TRUE(strand.running_in_this_thread());
-		ASSERT_TRUE(btc == 4);
+		REQUIRE(strand.running_in_this_thread());
+		REQUIRE(btc == 4);
 	});
 
 	//receive coroutine task
@@ -924,23 +924,23 @@ TEST_CASE("Async Operation Send/Receive single message, check thread safety", "[
 
 		boost::system::error_code ecc;
 
-		ASSERT_TRUE(strand.running_in_this_thread());
+		REQUIRE(strand.running_in_this_thread());
 		auto const btb1 = azmq::async_receive(sb, boost::asio::buffer(ident), yield[ecc]);
-		ASSERT_TRUE(strand.running_in_this_thread());
-		ASSERT_TRUE(ecc);
-		ASSERT_TRUE(btb1 == 5);
+		REQUIRE(strand.running_in_this_thread());
+		REQUIRE(ecc);
+		REQUIRE(btb1 == 5);
 
 		auto const btb2 = azmq::async_receive(sb, boost::asio::buffer(a), yield[ecc]);
-		ASSERT_TRUE(strand.running_in_this_thread());
-		ASSERT_TRUE(ecc);
-		ASSERT_TRUE(btb2 == 2);
-		ASSERT_TRUE(message_ref(snd_bufs.at(0)) == boost::string_ref(a.data(), 2));
+		REQUIRE(strand.running_in_this_thread());
+		REQUIRE(ecc);
+		REQUIRE(btb2 == 2);
+		REQUIRE(message_ref(snd_bufs.at(0)) == boost::string_ref(a.data(), 2));
 
 		auto const btb3 = azmq::async_receive(sb, boost::asio::buffer(b), yield[ecc]);
-		ASSERT_TRUE(strand.running_in_this_thread());
-		ASSERT_TRUE(ecc);
-		ASSERT_TRUE(btb3 == 2);
-		ASSERT_TRUE(message_ref(snd_bufs.at(1)) == boost::string_ref(b.data(), 2));
+		REQUIRE(strand.running_in_this_thread());
+		REQUIRE(ecc);
+		REQUIRE(btb3 == 2);
+		REQUIRE(message_ref(snd_bufs.at(1)) == boost::string_ref(b.data(), 2));
 	});
 
 	ios.run();
