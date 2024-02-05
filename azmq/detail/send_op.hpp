@@ -13,11 +13,14 @@
 #include "socket_ops.hpp"
 #include "reactor_op.hpp"
 
+#include <boost/version.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/dispatch.hpp>
 #include <boost/asio/executor_work_guard.hpp>
+#if BOOST_VERSION >= 107900
 #include <boost/asio/recycling_allocator.hpp>
 #include <boost/asio/bind_allocator.hpp>
+#endif
 
 #include <zmq.h>
 #include <iterator>
@@ -60,11 +63,21 @@ public:
     { }
 
     virtual void do_complete() override {
+#if BOOST_VERSION >= 107900
         auto alloc = boost::asio::get_associated_allocator(
             handler_, boost::asio::recycling_allocator<void>());
-        boost::asio::dispatch(work_guard.get_executor(), boost::asio::bind_allocator(alloc, [ec_ = this->ec_, handler_ = std::move(handler_), bytes_transferred_ = this->bytes_transferred_]() mutable {
+#endif
+        boost::asio::dispatch(work_guard.get_executor(),
+#if BOOST_VERSION >= 107900
+            boost::asio::bind_allocator(alloc,
+#endif
+                [ec_ = this->ec_, handler_ = std::move(handler_), bytes_transferred_ = this->bytes_transferred_]() mutable {
             handler_(ec_, bytes_transferred_);
-        }));
+        })
+#if BOOST_VERSION >= 107900
+        )
+#endif
+            ;
     }
 
 private:
@@ -104,11 +117,22 @@ public:
     { }
 
     virtual void do_complete() override {
+#if BOOST_VERSION >= 107900
         auto alloc = boost::asio::get_associated_allocator(
-            handler_, boost::asio::recycling_allocator<void>());
-        boost::asio::dispatch(work_guard.get_executor(), boost::asio::bind_allocator(alloc, [ec_ = this->ec_, handler_ = std::move(handler_), bytes_transferred_ = this->bytes_transferred_]() mutable {
+                handler_, boost::asio::recycling_allocator<void>());
+#endif
+        boost::asio::dispatch(work_guard.get_executor(),
+#if BOOST_VERSION >= 107900
+            boost::asio::bind_allocator(alloc,
+#endif
+                [ec_ = this->ec_, handler_ = std::move(handler_), bytes_transferred_ = this->bytes_transferred_]() mutable {
             handler_(ec_, bytes_transferred_);
-        }));
+        })
+#if BOOST_VERSION >= 107900
+        )
+#endif
+        ;
+
     }
 
 private:
