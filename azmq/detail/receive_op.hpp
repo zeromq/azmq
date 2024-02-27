@@ -26,6 +26,7 @@
 #include <zmq.h>
 
 #include <iterator>
+#include <type_traits>
 
 namespace azmq {
 namespace detail {
@@ -38,6 +39,23 @@ public:
         { }
 
     virtual bool do_perform(socket_type& socket) override {
+        return do_perform_impl(socket);
+    }
+
+private:
+    template<typename Buff = MutableBufferSequence>
+    typename std::enable_if<std::is_same<Buff, azmq::message>::value, bool>::type do_perform_impl(socket_type& socket)
+    {
+        ec_ = boost::system::error_code();
+        bytes_transferred_ += socket_ops::receive(const_cast<azmq::message&>(buffers_), socket, flags_ | ZMQ_DONTWAIT, ec_);
+        if (ec_)
+            return !try_again();
+        return true;
+    }
+
+    template<typename Buff = MutableBufferSequence>
+    typename std::enable_if<!std::is_same<Buff, azmq::message>::value, bool>::type do_perform_impl(socket_type& socket)
+    {
         ec_ = boost::system::error_code();
         bytes_transferred_ += socket_ops::receive(buffers_, socket, flags_ | ZMQ_DONTWAIT, ec_);
         if (ec_)
@@ -51,7 +69,7 @@ protected:
     }
 
 private:
-    MutableBufferSequence buffers_;
+    typename std::conditional<std::is_same_v<MutableBufferSequence, azmq::message>, MutableBufferSequence const&, MutableBufferSequence>::type buffers_;
     flags_type flags_;
 };
 
