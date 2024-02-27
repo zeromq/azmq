@@ -882,14 +882,19 @@ TEST_CASE("Async Operation Send/Receive single message, stackful coroutine, one 
       auto frame1 = azmq::message{};
       auto const btb1 = azmq::async_receive(sb, frame1, yield);
       REQUIRE(btb1 == 5);
+      REQUIRE(frame1.more());
 
       auto frame2 = azmq::message{};
       auto const btb2 = azmq::async_receive(sb, frame2, yield);
       REQUIRE(btb2 == 2);
+      REQUIRE(frame2.more());
+      REQUIRE(message_ref(snd_bufs.at(0)) == message_ref(frame2));
 
       auto frame3 = azmq::message{};
       auto const btb3 = azmq::async_receive(sb, frame3, yield);
       REQUIRE(btb3 == 2);
+      REQUIRE(!frame3.more());
+      REQUIRE(message_ref(snd_bufs.at(1)) == message_ref(frame3));
 
     });
 
