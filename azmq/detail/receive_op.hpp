@@ -69,7 +69,7 @@ protected:
     }
 
 private:
-    typename std::conditional<std::is_same_v<MutableBufferSequence, azmq::message>, MutableBufferSequence const&, MutableBufferSequence>::type buffers_;
+    typename std::conditional<std::is_same<MutableBufferSequence, azmq::message>::value, MutableBufferSequence const&, MutableBufferSequence>::type buffers_;
     flags_type flags_;
 };
 
