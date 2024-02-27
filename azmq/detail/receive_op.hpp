@@ -32,7 +32,7 @@ namespace detail {
 template<typename MutableBufferSequence>
 class receive_buffer_op_base : public reactor_op {
 public:
-    receive_buffer_op_base(MutableBufferSequence const& buffers, flags_type flags)
+    receive_buffer_op_base(MutableBufferSequence& buffers, flags_type flags)
         : buffers_(buffers)
         , flags_(flags)
         { }
@@ -51,7 +51,7 @@ protected:
     }
 
 private:
-    MutableBufferSequence buffers_;
+    MutableBufferSequence& buffers_;
     flags_type flags_;
 };
 
@@ -59,7 +59,7 @@ template<typename MutableBufferSequence,
          typename Handler>
 class receive_buffer_op : public receive_buffer_op_base<MutableBufferSequence> {
 public:
-    receive_buffer_op(MutableBufferSequence const& buffers,
+    receive_buffer_op(MutableBufferSequence& buffers,
                       Handler handler,
                       socket_ops::flags_type flags)
         : receive_buffer_op_base<MutableBufferSequence>(buffers, flags)
@@ -94,7 +94,7 @@ template<typename MutableBufferSequence,
          typename Handler>
 class receive_more_buffer_op : public receive_buffer_op_base<MutableBufferSequence> {
 public:
-    receive_more_buffer_op(MutableBufferSequence const& buffers,
+    receive_more_buffer_op(MutableBufferSequence& buffers,
                            Handler handler,
                            socket_ops::flags_type flags)
         : receive_buffer_op_base<MutableBufferSequence>(buffers, flags)

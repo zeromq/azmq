@@ -510,7 +510,7 @@ public:
      */
     template<typename MutableBufferSequence,
              typename ReadHandler>
-    void async_receive(MutableBufferSequence const& buffers,
+    void async_receive(MutableBufferSequence& buffers,
                        ReadHandler && handler,
                        flags_type flags = 0) {
         using type = detail::receive_buffer_op<MutableBufferSequence, ReadHandler>;
@@ -539,7 +539,7 @@ public:
      */
     template<typename MutableBufferSequence,
              typename ReadMoreHandler>
-    void async_receive_more(MutableBufferSequence const& buffers,
+    void async_receive_more(MutableBufferSequence& buffers,
                             ReadMoreHandler && handler,
                             flags_type flags = 0) {
         using type = detail::receive_more_buffer_op<MutableBufferSequence, ReadMoreHandler>;
@@ -712,7 +712,7 @@ struct async_send_initiation {
 template<typename MutableBufferSequence>
 struct async_receive_initiation {
   azmq::socket &socket;
-  MutableBufferSequence const &buffers;
+  MutableBufferSequence &buffers;
 
   template<typename CompletionHandler>
   void operator()(CompletionHandler &&completion_handler) {
@@ -726,7 +726,7 @@ struct async_receive_initiation {
 template<typename MutableBufferSequence>
 struct async_receive_more_initiation {
   azmq::socket &socket;
-  MutableBufferSequence const &buffers;
+  MutableBufferSequence &buffers;
 
   template<typename CompletionHandler>
   void operator()(CompletionHandler &&completion_handler) {
@@ -748,7 +748,7 @@ auto async_send(azmq::socket &socket, ConstBufferSequence const &buffers,
 }
 
 template<class CompletionToken, class MutableBufferSequence>
-auto async_receive(azmq::socket &socket, MutableBufferSequence const &buffers,
+auto async_receive(azmq::socket &socket, MutableBufferSequence &buffers,
                    CompletionToken &&token)
 -> BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken,
                                  void(boost::system::error_code, size_t)) {
