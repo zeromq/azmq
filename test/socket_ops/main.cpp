@@ -2,6 +2,7 @@
 #include <azmq/detail/socket_ops.hpp>
 
 #include <boost/asio/buffer.hpp>
+#include <boost/current_function.hpp>
 
 #include <array>
 #include <chrono>
