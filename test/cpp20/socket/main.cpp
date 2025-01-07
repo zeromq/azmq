@@ -14,6 +14,8 @@
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/use_awaitable.hpp>
 
+#include <boost/current_function.hpp>
+
 #include <coroutine>
 #include <array>
 #include <string>
