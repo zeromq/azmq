@@ -13,7 +13,14 @@
 #include "socket_ops.hpp"
 #include "reactor_op.hpp"
 
+#include <boost/version.hpp>
 #include <boost/asio/io_service.hpp>
+#include <boost/asio/dispatch.hpp>
+#include <boost/asio/executor_work_guard.hpp>
+#if BOOST_VERSION >= 107900
+#include <boost/asio/recycling_allocator.hpp>
+#include <boost/asio/bind_allocator.hpp>
+#endif
 
 #include <zmq.h>
 #include <iterator>
@@ -52,14 +59,30 @@ public:
                    reactor_op::flags_type flags)
         : send_buffer_op_base<ConstBufferSequence>(buffers, flags)
         , handler_(std::move(handler))
+        , work_guard(boost::asio::make_work_guard(handler_))
     { }
 
     virtual void do_complete() override {
-        handler_(this->ec_, this->bytes_transferred_);
+#if BOOST_VERSION >= 107900
+        auto alloc = boost::asio::get_associated_allocator(
+            handler_, boost::asio::recycling_allocator<void>());
+#endif
+        boost::asio::dispatch(work_guard.get_executor(),
+#if BOOST_VERSION >= 107900
+            boost::asio::bind_allocator(alloc,
+#endif
+                [ec_ = this->ec_, handler_ = std::move(handler_), bytes_transferred_ = this->bytes_transferred_]() mutable {
+            handler_(ec_, bytes_transferred_);
+        })
+#if BOOST_VERSION >= 107900
+        )
+#endif
+            ;
     }
 
 private:
     Handler handler_;
+    boost::asio::executor_work_guard<typename boost::asio::associated_executor<Handler>::type> work_guard;
 };
 
 class send_op_base : public reactor_op {
@@ -90,14 +113,31 @@ public:
             flags_type flags)
         : send_op_base(std::move(msg), flags)
         , handler_(std::move(handler))
+        , work_guard(boost::asio::make_work_guard(handler_))
     { }
 
     virtual void do_complete() override {
-        handler_(ec_, bytes_transferred_);
+#if BOOST_VERSION >= 107900
+        auto alloc = boost::asio::get_associated_allocator(
+                handler_, boost::asio::recycling_allocator<void>());
+#endif
+        boost::asio::dispatch(work_guard.get_executor(),
+#if BOOST_VERSION >= 107900
+            boost::asio::bind_allocator(alloc,
+#endif
+                [ec_ = this->ec_, handler_ = std::move(handler_), bytes_transferred_ = this->bytes_transferred_]() mutable {
+            handler_(ec_, bytes_transferred_);
+        })
+#if BOOST_VERSION >= 107900
+        )
+#endif
+        ;
+
     }
 
 private:
     Handler handler_;
+    boost::asio::executor_work_guard<typename boost::asio::associated_executor<Handler>::type> work_guard;
 };
 
 } // namespace detail

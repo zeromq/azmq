@@ -14,11 +14,19 @@
 #include "socket_ops.hpp"
 #include "reactor_op.hpp"
 
+#include <boost/version.hpp>
 #include <boost/asio/io_service.hpp>
+#include <boost/asio/dispatch.hpp>
+#include <boost/asio/executor_work_guard.hpp>
+#if BOOST_VERSION >= 107900
+#include <boost/asio/recycling_allocator.hpp>
+#include <boost/asio/bind_allocator.hpp>
+#endif
 
 #include <zmq.h>
 
 #include <iterator>
+#include <type_traits>
 
 namespace azmq {
 namespace detail {
@@ -31,6 +39,23 @@ public:
         { }
 
     virtual bool do_perform(socket_type& socket) override {
+        return do_perform_impl(socket);
+    }
+
+private:
+    template<typename Buff = MutableBufferSequence>
+    typename std::enable_if<std::is_same<Buff, azmq::message>::value, bool>::type do_perform_impl(socket_type& socket)
+    {
+        ec_ = boost::system::error_code();
+        bytes_transferred_ += socket_ops::receive(const_cast<azmq::message&>(buffers_), socket, flags_ | ZMQ_DONTWAIT, ec_);
+        if (ec_)
+            return !try_again();
+        return true;
+    }
+
+    template<typename Buff = MutableBufferSequence>
+    typename std::enable_if<!std::is_same<Buff, azmq::message>::value, bool>::type do_perform_impl(socket_type& socket)
+    {
         ec_ = boost::system::error_code();
         bytes_transferred_ += socket_ops::receive(buffers_, socket, flags_ | ZMQ_DONTWAIT, ec_);
         if (ec_)
@@ -44,7 +69,7 @@ protected:
     }
 
 private:
-    MutableBufferSequence buffers_;
+    typename std::conditional<std::is_same<MutableBufferSequence, azmq::message>::value, MutableBufferSequence const&, MutableBufferSequence>::type buffers_;
     flags_type flags_;
 };
 
@@ -57,14 +82,30 @@ public:
                       socket_ops::flags_type flags)
         : receive_buffer_op_base<MutableBufferSequence>(buffers, flags)
         , handler_(std::move(handler))
+        , work_guard(boost::asio::make_work_guard(handler_))
         { }
 
     virtual void do_complete() override {
-        handler_(this->ec_, this->bytes_transferred_);
+#if BOOST_VERSION >= 107900
+        auto alloc = boost::asio::get_associated_allocator(
+            handler_, boost::asio::recycling_allocator<void>());
+#endif
+        boost::asio::dispatch(work_guard.get_executor(),
+#if BOOST_VERSION >= 107900
+            boost::asio::bind_allocator(alloc,
+#endif
+                [ec_ = this->ec_, handler_ = std::move(handler_), bytes_transferred_ = this->bytes_transferred_]() mutable {
+            handler_(ec_, bytes_transferred_);
+        })
+#if BOOST_VERSION >= 107900
+        )
+#endif
+            ;
     }
 
 private:
     Handler handler_;
+    boost::asio::executor_work_guard<typename boost::asio::associated_executor<Handler>::type> work_guard;
 };
 
 template<typename MutableBufferSequence,
@@ -76,14 +117,30 @@ public:
                            socket_ops::flags_type flags)
         : receive_buffer_op_base<MutableBufferSequence>(buffers, flags)
         , handler_(std::move(handler))
+        , work_guard(boost::asio::make_work_guard(handler_))
         { }
 
     virtual void do_complete() override {
-        handler_(this->ec_, std::make_pair(this->bytes_transferred_, this->more()));
+#if BOOST_VERSION >= 107900
+        auto alloc = boost::asio::get_associated_allocator(
+            handler_, boost::asio::recycling_allocator<void>());
+#endif
+        boost::asio::dispatch(work_guard.get_executor(),
+#if BOOST_VERSION >= 107900
+            boost::asio::bind_allocator(alloc,
+#endif
+                [ec_ = this->ec_, handler_ = std::move(handler_), bytes_transferred_ = this->bytes_transferred_, more = this->more()]() mutable {
+            handler_(ec_, std::make_pair(bytes_transferred_, more));
+        })
+#if BOOST_VERSION >= 107900
+        )
+#endif
+            ;
     }
 
 private:
     Handler handler_;
+    boost::asio::executor_work_guard<typename boost::asio::associated_executor<Handler>::type> work_guard;
 };
 
 class receive_op_base : public reactor_op {
@@ -112,14 +169,30 @@ public:
                socket_ops::flags_type flags)
         : receive_op_base(flags)
         , handler_(std::move(handler))
+        , work_guard(boost::asio::make_work_guard(handler_))
         { }
 
     virtual void do_complete() override {
-        handler_(ec_, msg_, bytes_transferred_);
+#if BOOST_VERSION >= 107900
+        auto alloc = boost::asio::get_associated_allocator(
+            handler_, boost::asio::recycling_allocator<void>());
+#endif
+        boost::asio::dispatch(work_guard.get_executor(),
+#if BOOST_VERSION >= 107900
+            boost::asio::bind_allocator(alloc,
+#endif
+                [ec_ = this->ec_, handler_ = std::move(handler_), msg_ = std::move(msg_), bytes_transferred_ = this->bytes_transferred_]() mutable {
+            handler_(ec_, msg_, bytes_transferred_);
+        })
+#if BOOST_VERSION >= 107900
+        )
+#endif
+            ;
     }
 
 private:
     Handler handler_;
+    boost::asio::executor_work_guard<typename boost::asio::associated_executor<Handler>::type> work_guard;
 };
 } // namespace detail
 } // namespace azmq

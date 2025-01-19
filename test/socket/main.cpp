@@ -9,6 +9,7 @@
 #include <azmq/socket.hpp>
 #include <azmq/util/scope_guard.hpp>
 
+#include <boost/current_function.hpp>
 #include <boost/utility/string_ref.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
@@ -19,6 +20,9 @@
 #include <boost/asio/use_future.hpp>
 #include <boost/asio/spawn.hpp>
 #include <boost/optional.hpp>
+#if BOOST_VERSION >= 107400
+#include <boost/asio/any_io_executor.hpp>
+#endif
 #endif
 
 #include <array>
@@ -880,18 +884,73 @@ TEST_CASE("Async Operation Send/Receive single message, stackful coroutine, one 
       auto frame1 = azmq::message{};
       auto const btb1 = azmq::async_receive(sb, frame1, yield);
       REQUIRE(btb1 == 5);
+      REQUIRE(frame1.more());
 
       auto frame2 = azmq::message{};
       auto const btb2 = azmq::async_receive(sb, frame2, yield);
       REQUIRE(btb2 == 2);
+      REQUIRE(frame2.more());
+      REQUIRE(message_ref(snd_bufs.at(0)) == message_ref(frame2));
 
       auto frame3 = azmq::message{};
       auto const btb3 = azmq::async_receive(sb, frame3, yield);
       REQUIRE(btb3 == 2);
+      REQUIRE(!frame3.more());
+      REQUIRE(message_ref(snd_bufs.at(1)) == message_ref(frame3));
 
     });
 
     ios.run();
+}
+
+
+TEST_CASE("Async Operation Send/Receive single message, check thread safety", "[socket_ops]") {
+	boost::asio::io_service ios;
+#if BOOST_VERSION >= 107400
+	boost::asio::strand<boost::asio::any_io_executor> strand{ios.get_executor()};
+#else
+	boost::asio::strand<boost::asio::executor> strand{ios.get_executor()};
+#endif
+
+	azmq::socket sb(ios, ZMQ_ROUTER);
+	sb.bind(subj(BOOST_CURRENT_FUNCTION));
+
+	azmq::socket sc(ios, ZMQ_DEALER);
+	sc.connect(subj(BOOST_CURRENT_FUNCTION));
+
+	//send coroutine task
+	boost::asio::spawn(strand, [&](boost::asio::yield_context yield) {
+		REQUIRE(strand.running_in_this_thread());
+        boost::system::error_code ecc;
+		auto const btc = azmq::async_send(sc, snd_bufs, yield[ecc]);
+		REQUIRE(strand.running_in_this_thread());
+        REQUIRE(!ecc);
+		REQUIRE(btc == 4);
+	});
+
+	//receive coroutine task
+	boost::asio::spawn(strand, [&](boost::asio::yield_context yield) {
+		std::array<char, 5> ident;
+		std::array<char, 2> a;
+		std::array<char, 2> b;
+
+		std::array<boost::asio::mutable_buffer, 3> rcv_bufs = { {boost::asio::buffer(ident),
+						boost::asio::buffer(a),
+						boost::asio::buffer(b)}};
+
+		boost::system::error_code ecc;
+
+		REQUIRE(strand.running_in_this_thread());
+		auto const btb = azmq::async_receive(sb, rcv_bufs, yield[ecc]);
+		REQUIRE(strand.running_in_this_thread());
+		REQUIRE(!ecc);
+		REQUIRE(btb == 9);
+
+		REQUIRE(message_ref(snd_bufs.at(0)) == boost::string_ref(a.data(), 2));
+		REQUIRE(message_ref(snd_bufs.at(1)) == boost::string_ref(b.data(), 2));
+	});
+
+	ios.run();
 }
 
 #endif // BOOST_VERSION >= 107000
