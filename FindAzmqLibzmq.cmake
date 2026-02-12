@@ -42,7 +42,24 @@ else ()
         find_package(PkgConfig REQUIRED)
         pkg_check_modules(LIBZMQ REQUIRED IMPORTED_TARGET GLOBAL libzmq)
         if (LIBZMQ_FOUND)
-            add_library(Azmq::libzmq ALIAS PkgConfig::LIBZMQ)
+            # Create INTERFACE IMPORTED target to avoid exporting PkgConfig::LIBZMQ
+            add_library(Azmq::libzmq INTERFACE IMPORTED GLOBAL)
+
+            # Copy all relevant properties from pkg-config target
+            foreach(_prop IN ITEMS
+                INTERFACE_LINK_LIBRARIES
+                INTERFACE_INCLUDE_DIRECTORIES
+                INTERFACE_COMPILE_OPTIONS
+                INTERFACE_COMPILE_DEFINITIONS
+                INTERFACE_LINK_OPTIONS
+            )
+                get_target_property(_value PkgConfig::LIBZMQ ${_prop})
+                if(_value AND NOT _value MATCHES "-NOTFOUND$")
+                    set_property(TARGET Azmq::libzmq PROPERTY ${_prop} "${_value}")
+                endif()
+            endforeach()
+            unset(_value)
+            unset(_prop)
         else ()
             message(FAIL_ERROR "Can't find the required libzmq library")
         endif ()
