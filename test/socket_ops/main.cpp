@@ -6,6 +6,8 @@
 
 #include <array>
 #include <chrono>
+#include <cerrno>
+#include <random>
 #include <thread>
 
 #define CATCH_CONFIG_MAIN
@@ -27,9 +29,25 @@ TEST_CASE( "Tcp Dynamic Binding Expressions", "[socket_ops]" ) {
     auto sb = azmq::detail::socket_ops::create_socket(ctx, ZMQ_ROUTER, ec);
     REQUIRE(ec == boost::system::error_code());
 
-    std::string uri{ "tcp://127.0.0.1:5560" };
-    azmq::detail::socket_ops::bind(sb, uri, ec);
-    REQUIRE(ec == boost::system::error_code());
+    // Bind to an explicit numeric port (but pick one dynamically) to avoid
+    // flakiness when tests run in parallel.
+    std::mt19937 rng{std::random_device{}()};
+    std::uniform_int_distribution<int> port_dist(49152, 65535);
+    std::string uri;
+    bool bound = false;
+    for (int attempt = 0; attempt < 50; ++attempt) {
+        uri = std::string("tcp://127.0.0.1:") + std::to_string(port_dist(rng));
+        azmq::detail::socket_ops::bind(sb, uri, ec);
+        if (!ec) {
+            bound = true;
+            break;
+        }
+        if (ec.value() == EADDRINUSE) {
+            continue;
+        }
+        FAIL(ec.message());
+    }
+    REQUIRE(bound);
     azmq::detail::socket_ops::unbind(sb, uri, ec);
     REQUIRE(ec == boost::system::error_code());
     std::this_thread::sleep_for(std::chrono::milliseconds(100));

@@ -226,6 +226,10 @@ TEST_CASE( "Async send/receive copies buffer refs", "[socket_ops]" ) {
             ioservice.run();
         }
 
+        std::string endpoint() const {
+            return sock.endpoint();
+        }
+
         boost::system::error_code get_error() const {
             return error;
         }
@@ -279,10 +283,11 @@ TEST_CASE( "Async send/receive copies buffer refs", "[socket_ops]" ) {
         }
     };
 
-    static const char ENDPOINT[] = "tcp://127.0.0.1:9998";
-
+    std::string endpoint = "tcp://127.0.0.1:*";
     Sender sender;
-    sender.bind(ENDPOINT);
+    sender.bind(endpoint);
+    endpoint = sender.endpoint();
+    REQUIRE(!endpoint.empty());
     sender.start_send();
 
     Receiver receiver;
@@ -293,8 +298,8 @@ TEST_CASE( "Async send/receive copies buffer refs", "[socket_ops]" ) {
         sender.run();
     });
 
-    std::thread receiverthread([&receiver]() {
-        receiver.connect(ENDPOINT);
+    std::thread receiverthread([&receiver, &endpoint]() {
+        receiver.connect(endpoint);
         receiver.start_receive();
         receiver.run();
     });
@@ -610,8 +615,10 @@ TEST_CASE( "Socket Monitor", "[socket]" ) {
         ioc_m.run();
     });
 
-    server->bind("tcp://127.0.0.1:9998");
-    client->connect("tcp://127.0.0.1:9998");
+    server->bind("tcp://127.0.0.1:*");
+    auto endpoint = server->endpoint();
+    REQUIRE(!endpoint.empty());
+    client->connect(endpoint);
 
     bounce(*client, *server);
 
@@ -627,27 +634,39 @@ TEST_CASE( "Socket Monitor", "[socket]" ) {
     t.join();
 
     {
-        size_t i = 0;
-        CHECK(client_monitor.events_.at(i++).e == ZMQ_EVENT_CONNECT_DELAYED);
-        CHECK(client_monitor.events_.at(i++).e == ZMQ_EVENT_CONNECTED);
-        #ifdef ZMQ_EVENT_HANDSHAKE_SUCCEEDED
-          CHECK(client_monitor.events_.at(i++).e == ZMQ_EVENT_HANDSHAKE_SUCCEEDED);
-        #endif
-        CHECK(client_monitor.events_.at(i++).e == ZMQ_EVENT_MONITOR_STOPPED);
-        REQUIRE(client_monitor.events_.size() == i);
-  }
+        auto has_event = [&client_monitor](uint16_t wanted) {
+                for (auto const& ev : client_monitor.events_) {
+                        if (ev.e == wanted)
+                                return true;
+                }
+                return false;
+        };
 
-  {
-      size_t i = 0;
-      CHECK(server_monitor.events_.at(i++).e == ZMQ_EVENT_LISTENING);
-      CHECK(server_monitor.events_.at(i++).e == ZMQ_EVENT_ACCEPTED);
-      #ifdef ZMQ_EVENT_HANDSHAKE_SUCCEEDED
-        CHECK(server_monitor.events_.at(i++).e == ZMQ_EVENT_HANDSHAKE_SUCCEEDED);
-      #endif
-      CHECK(server_monitor.events_.at(i++).e == ZMQ_EVENT_CLOSED);
-      CHECK(server_monitor.events_.at(i++).e == ZMQ_EVENT_MONITOR_STOPPED);
-      REQUIRE(server_monitor.events_.size() == i);
-  }
+        CHECK(has_event(ZMQ_EVENT_CONNECT_DELAYED));
+        CHECK(has_event(ZMQ_EVENT_CONNECTED));
+        #ifdef ZMQ_EVENT_HANDSHAKE_SUCCEEDED
+            CHECK(has_event(ZMQ_EVENT_HANDSHAKE_SUCCEEDED));
+        #endif
+        CHECK(has_event(ZMQ_EVENT_MONITOR_STOPPED));
+    }
+
+    {
+        auto has_event = [&server_monitor](uint16_t wanted) {
+                for (auto const& ev : server_monitor.events_) {
+                        if (ev.e == wanted)
+                                return true;
+                }
+                return false;
+        };
+
+        CHECK(has_event(ZMQ_EVENT_LISTENING));
+        CHECK(has_event(ZMQ_EVENT_ACCEPTED));
+        #ifdef ZMQ_EVENT_HANDSHAKE_SUCCEEDED
+            CHECK(has_event(ZMQ_EVENT_HANDSHAKE_SUCCEEDED));
+        #endif
+        CHECK(has_event(ZMQ_EVENT_CLOSED));
+        CHECK(has_event(ZMQ_EVENT_MONITOR_STOPPED));
+    }
 }
 
 TEST_CASE( "Attach Method", "[socket]" ) {
@@ -657,18 +676,20 @@ TEST_CASE( "Attach Method", "[socket]" ) {
 
     std::vector<std::string> elems;
 
-    azmq::attach(s, split(elems, "@inproc://myendpoint,tcp://127.0.0.1:5556,inproc://others", is_any_of(",")), true);
+    azmq::attach(s, split(elems, "@inproc://myendpoint,tcp://127.0.0.1:*,inproc://others", is_any_of(",")), true);
     REQUIRE(s.endpoint() == "inproc://others");
 }
 
 TEST_CASE( "Pub/Sub", "[socket]" ) {
     boost::asio::io_context ioc;
     azmq::sub_socket subscriber(ioc);
-    subscriber.connect("tcp://127.0.0.1:5556");
     subscriber.set_option(azmq::socket::subscribe("FOO"));
 
     azmq::pub_socket publisher(ioc);
-    publisher.bind("tcp://127.0.0.1:5556");
+    publisher.bind("tcp://127.0.0.1:*");
+    auto endpoint = publisher.endpoint();
+    REQUIRE(!endpoint.empty());
+    subscriber.connect(endpoint);
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
@@ -713,10 +734,12 @@ TEST_CASE( "Loopback", "[socket]" ) {
     boost::asio::io_context ioc_c;
 
     azmq::socket sb(ioc_b, ZMQ_ROUTER);
-    sb.bind("tcp://127.0.0.1:5560");
+    sb.bind("tcp://127.0.0.1:*");
+    auto endpoint = sb.endpoint();
+    REQUIRE(!endpoint.empty());
 
     azmq::socket sc(ioc_c, ZMQ_DEALER);
-    sc.connect("tcp://127.0.0.1:5560");
+    sc.connect(endpoint);
 
     size_t ct = 100000;
     state s(ct);

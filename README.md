@@ -29,7 +29,7 @@ which supports C++11. Currently this has been tested with -
 * Microsoft Visual Studio 2013 on Windows Server 2008 R2
 
 Library dependencies are -
-* Boost 1.68 or later
+* Boost 1.68 or later (headers only; no compiled Boost libraries required)
 * ZeroMQ 4.0.x
 
 Tests and example code require -
