@@ -1,11 +1,6 @@
 include(CMakeFindDependencyMacro)
-find_package(Boost 1.68 COMPONENTS date_time thread chrono random REQUIRED)
-find_package(Boost 1.68 COMPONENTS system)
-if (NOT Boost_SYSTEM_FOUND)
-    message(WARNING "Boost::system not found")
-endif()
+find_dependency(Boost 1.68 OPTIONAL_COMPONENTS system)
 
 include(${CMAKE_CURRENT_LIST_DIR}/FindAzmqLibzmq.cmake)
-set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
-find_package(Threads REQUIRED)
+find_dependency(Threads)
 include("${CMAKE_CURRENT_LIST_DIR}/azmqTargets.cmake")

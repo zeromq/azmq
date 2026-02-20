@@ -18,31 +18,33 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# --- dependencies  --
-find_package(
-    Boost 1.68
-    COMPONENTS date_time
-               thread
-               chrono
-               random
-    REQUIRED)
+if(NOT PROJECT_IS_TOP_LEVEL OR AZMQ_BUILD_TESTS OR AZMQ_BUILD_DOC)
+    # --- dependencies  --
+    find_package(
+        Boost 1.68
+        COMPONENTS date_time
+                thread
+                chrono
+                random
+        OPTIONAL_COMPONENTS
+                system
+        REQUIRED)
 
-# Try to find Boost::system
-find_package(Boost COMPONENTS system)
-if (NOT Boost_SYSTEM_FOUND)
-    message(WARNING "Boost::system not found, some examples may not compile")
+    include(FindAzmqLibzmq.cmake)
+
+    set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+    find_package(Threads REQUIRED)
+else()
+    add_library(Azmq::libzmq INTERFACE IMPORTED)
+    add_library(Boost::headers INTERFACE IMPORTED)
+    add_library(Threads::Threads INTERFACE IMPORTED)
 endif()
-
-include(FindAzmqLibzmq.cmake)
-
-set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
-find_package(Threads REQUIRED)
 
 # --- create library --
 add_library(${PROJECT_NAME} INTERFACE)
 add_library(Azmq::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
-target_link_libraries(${PROJECT_NAME} INTERFACE Azmq::libzmq Boost::boost ${Boost_SYSTEM_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(${PROJECT_NAME} INTERFACE Azmq::libzmq Boost::headers "$<$<TARGET_EXISTS:Boost::system>:Boost::system>" Threads::Threads)
 target_include_directories(${PROJECT_NAME} INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
                                                      "$<INSTALL_INTERFACE:include>")
 
